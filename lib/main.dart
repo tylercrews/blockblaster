@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
-// import 'dart:math' as math;
+import 'package:flame/input.dart';
+// import 'dart:gmath' as math;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,12 +37,14 @@ class GameScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GameWidget(game: BlockBlasterGame()),
+      body: GameWidget(
+        game: BlockBlasterGame(),
+      ),
     );
   }
 }
 
-class BlockBlasterGame extends FlameGame {
+class BlockBlasterGame extends FlameGame with PanDetector {
   late PlayerShip player;
   late List<Shot> shots;
 
@@ -85,6 +88,16 @@ class BlockBlasterGame extends FlameGame {
     shots.add(shot);
     add(shot);
   }
+
+  @override
+  void onPanUpdate(info) {
+    // Move player ship based on drag
+    player.position += info.delta.global;
+    
+    // Keep ship within bounds
+    player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
+    player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
+  }
 }
 
 class PlayerShip extends PositionComponent {
@@ -123,7 +136,11 @@ class PlayerShip extends PositionComponent {
     final shot = Shot(
       gameRef: gameRef,
     );
-    shot.position = Vector2(position.x + shipWidth + 10, position.y + shipHeight / 2);
+    // Spawn from the front (right side) center of the ship
+    shot.position = Vector2(
+      position.x + shipWidth,
+      position.y + shipHeight / 2,
+    );
     gameRef.addShot(shot);
   }
 
