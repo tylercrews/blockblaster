@@ -307,12 +307,54 @@ class BlockBlasterGame extends FlameGame {
       return;
     }
     
+    // Check if we're transitioning from 2-finger mode back to 1 finger
+    if (isTwoFingerMode && touchPoints.length == 1) {
+      isTwoFingerMode = false;
+      previousTouchPoints.clear(); // Reset so we can drag with the remaining finger
+      debugPrint('Exiting two-finger mode, back to single touch');
+      return;
+    }
+    
     if (isTwoFingerMode && touchPoints.length == 2) {
-      // Multi-touch - calculate rotation only
+      // Multi-touch - check if both fingers are moving in same direction (parallel drag) or rotating
       final points = touchPoints.values.toList();
       final p1 = points[0];
       final p2 = points[1];
       
+      final prevPoints = previousTouchPoints.values.toList();
+      if (prevPoints.length == 2) {
+        final prevP1 = prevPoints[0];
+        final prevP2 = prevPoints[1];
+        
+        // Calculate deltas for each finger
+        final delta1 = p1 - prevP1;
+        final delta2 = p2 - prevP2;
+        
+        // Check if both fingers moved in similar direction (dot product of normalized deltas)
+        final len1 = math.sqrt(delta1.dx * delta1.dx + delta1.dy * delta1.dy);
+        final len2 = math.sqrt(delta2.dx * delta2.dx + delta2.dy * delta2.dy);
+        
+        if (len1 > 1.0 && len2 > 1.0) {
+          // Both fingers moved significantly
+          final norm1 = Offset(delta1.dx / len1, delta1.dy / len1);
+          final norm2 = Offset(delta2.dx / len2, delta2.dy / len2);
+          final dotProduct = norm1.dx * norm2.dx + norm1.dy * norm2.dy;
+          
+          debugPrint('Two-finger dot product: $dotProduct');
+          
+          // If dot product > 0.7, fingers moving in parallel direction - allow ship movement
+          if (dotProduct > 0.7) {
+            debugPrint('Parallel drag detected - moving ship');
+            // Use average delta for ship movement
+            final avgDelta = Offset((delta1.dx + delta2.dx) / 2, (delta1.dy + delta2.dy) / 2);
+            _moveShip(Vector2(avgDelta.dx, avgDelta.dy));
+            previousTouchPoints[pointerId] = localPosition.toOffset();
+            return;
+          }
+        }
+      }
+      
+      // Not a parallel drag, so calculate rotation
       debugPrint('Two-touch rotation: p1=$p1, p2=$p2');
       
       // Calculate angle between the two touch points
@@ -328,60 +370,65 @@ class BlockBlasterGame extends FlameGame {
       debugPrint('Rotation delta: $rotationDelta rad');
       
       // Apply rotation to ship
-      player.shipAngle += rotationDelta * 4.0; // ROTATION SENSITIVITY
+      player.shipAngle += rotationDelta * 4.0;
       
       lastRotation = angle;
-    } else if (touchPoints.length == 1 && !isTwoFingerMode) {
+      previousTouchPoints[pointerId] = localPosition.toOffset();
+    } else if (touchPoints.length == 1) {
       // Single touch - move player
       if (previousPosition != null) {
         final delta = localPosition.toOffset() - previousPosition;
         debugPrint('Single touch delta: $delta');
-        final newPosition = player.position + Vector2(delta.dx, delta.dy);
-        
-        // Create a test rect for the new position
-        final testRect = Rect.fromLTWH(
-          newPosition.x,
-          newPosition.y,
-          PlayerShip.shipWidth,
-          PlayerShip.shipHeight,
-        );
-        
-        // Check if new position would collide with any blocks
-        bool canMove = true;
-        Block? collidingBlock;
-        for (var block in blocks) {
-          if (block.isVisible && testRect.overlaps(block.toRect())) {
-            canMove = false;
-            collidingBlock = block;
-            break;
-          }
-        }
-        
-        if (canMove) {
-          player.position = newPosition;
-        } else if (collidingBlock != null) {
-          // Player is being blocked by a block - apply damage
-          if (player.canTakeDamage()) {
-            lives--;
-            player.takeDamage();
-            debugPrint('Player hit block while moving! Lives remaining: $lives');
-            
-            // Check if game over
-            if (lives <= 0) {
-              isGameOver = true;
-              respawnTimer = respawnDelay;
-              debugPrint('Game Over! Respawning in $respawnDelay seconds...');
-            }
-          }
-        }
-        
-        // Keep ship within bounds
-        player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
-        player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
+        _moveShip(Vector2(delta.dx, delta.dy));
       }
       // Store previous position for next single-touch update
       previousTouchPoints[pointerId] = localPosition.toOffset();
     }
+  }
+  
+  void _moveShip(Vector2 delta) {
+    final newPosition = player.position + delta;
+    
+    // Create a test rect for the new position
+    final testRect = Rect.fromLTWH(
+      newPosition.x,
+      newPosition.y,
+      PlayerShip.shipWidth,
+      PlayerShip.shipHeight,
+    );
+    
+    // Check if new position would collide with any blocks
+    bool canMove = true;
+    Block? collidingBlock;
+    for (var block in blocks) {
+      if (block.isVisible && testRect.overlaps(block.toRect())) {
+        canMove = false;
+        collidingBlock = block;
+        break;
+      }
+    }
+    
+    if (canMove) {
+      player.position = newPosition;
+    } else if (collidingBlock != null) {
+      // Player is being blocked by a block - apply damage
+      if (player.canTakeDamage()) {
+        lives--;
+        player.takeDamage();
+        debugPrint('Player hit block while moving! Lives remaining: $lives');
+        
+        // Check if game over
+        if (lives <= 0) {
+          isGameOver = true;
+          respawnTimer = respawnDelay;
+          debugPrint('Game Over! Respawning in $respawnDelay seconds...');
+        }
+      }
+    }
+    
+    // Keep ship within bounds
+    player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
+    player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
   }
   
   void onTouchUp(int pointerId) {
