@@ -364,7 +364,7 @@ class BlockBlasterGame extends FlameGame {
       debugPrint('Rotation delta: $rotationDelta rad');
       
       // Apply rotation to ship (scale it down to make it more controllable)
-      player.shipAngle += rotationDelta * 0.5;
+      player.shipAngle += rotationDelta * 1.5;
       
       lastRotation = angle;
     }
