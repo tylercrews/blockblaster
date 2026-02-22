@@ -184,6 +184,8 @@ class BlockBlasterGame extends FlameGame {
   late List<Shot> shots;
   late List<Block> blocks;
   int lives = 5;
+  int score = 0;
+  double scoreTimer = 0;
   bool isGameOver = false;
   double respawnTimer = 0;
   static const double respawnDelay = 2.0;
@@ -265,6 +267,15 @@ class BlockBlasterGame extends FlameGame {
       return false;
     });
     
+    // Increment score once per second while alive
+    if (!isGameOver) {
+      scoreTimer += dt;
+      if (scoreTimer >= 1.0) {
+        score += scoreTimer.floor();
+        scoreTimer -= scoreTimer.floor();
+      }
+    }
+
     // Check bullet-block collisions
     for (var shot in shots.toList()) {
       for (var block in blocks.toList()) {
@@ -300,6 +311,23 @@ class BlockBlasterGame extends FlameGame {
   void render(Canvas canvas) {
     super.render(canvas);
     _renderLives(canvas);
+    _renderScore(canvas);
+  }
+
+  void _renderScore(Canvas canvas) {
+    const padding = 10.0;
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '$score',
+        style: const TextStyle(color: Colors.white, fontSize: 16),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(screenSize.width / 2 - textPainter.width / 2, padding),
+    );
   }
 
   void _renderLives(Canvas canvas) {
