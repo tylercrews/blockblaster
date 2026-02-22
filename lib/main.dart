@@ -119,6 +119,114 @@ class _MenuButton extends StatelessWidget {
   }
 }
 
+class GameOverScreen extends StatelessWidget {
+  final int score;
+  const GameOverScreen({super.key, required this.score});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1a1a2e),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Good Game!',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(height: 30),
+            const Text(
+              'You Scored:',
+              style: TextStyle(color: Colors.white70, fontSize: 22),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '$score',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'You placed X on the leaderboard!',
+              style: TextStyle(color: Colors.white70, fontSize: 18),
+            ),
+            const SizedBox(height: 40),
+            _MenuButton(
+              label: 'MAIN MENU',
+              enabled: true,
+              onPressed: () {
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _SmallButton(label: 'LEADERBOARD', enabled: false, onPressed: () => debugPrint('hi')),
+                const SizedBox(width: 12),
+                _SmallButton(label: 'YOUR SCORES', enabled: false, onPressed: () => debugPrint('hi')),
+                const SizedBox(width: 12),
+                _SmallButton(label: 'FRIENDS\nLEADERBOARD', enabled: false, onPressed: () => debugPrint('hi')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallButton extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final VoidCallback? onPressed;
+
+  const _SmallButton({
+    required this.label,
+    required this.enabled,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: enabled ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: enabled ? Colors.deepPurple : Colors.grey.shade800,
+          foregroundColor: enabled ? Colors.white : Colors.grey.shade600,
+          disabledBackgroundColor: Colors.grey.shade800,
+          disabledForegroundColor: Colors.grey.shade600,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: enabled ? Colors.purpleAccent : Colors.grey.shade700,
+              width: 1.5,
+            ),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+        ),
+        child: Text(label, textAlign: TextAlign.center),
+      ),
+    );
+  }
+}
+
 class GameScreen extends StatefulWidget {
   final Size screenSize;
   const GameScreen({super.key, required this.screenSize});
@@ -135,6 +243,17 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     game = BlockBlasterGame(screenSize: widget.screenSize);
+    game.onGameOver = () {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => GameOverScreen(score: game.score),
+            ),
+          );
+        }
+      });
+    };
   }
 
   void _handlePointerDown(PointerDownEvent event) {
@@ -190,6 +309,8 @@ class BlockBlasterGame extends FlameGame {
   double respawnTimer = 0;
   static const double respawnDelay = 2.0;
   
+  VoidCallback? onGameOver;
+
   // Multi-touch rotation tracking
   final Map<int, Offset> touchPoints = {};
   final Map<int, Offset> previousTouchPoints = {};
@@ -244,19 +365,8 @@ class BlockBlasterGame extends FlameGame {
   void update(double dt) {
     super.update(dt);
     
-    // Handle game over state
-    if (isGameOver) {
-      respawnTimer -= dt;
-      if (respawnTimer <= 0) {
-        // Respawn the player
-        lives = 5;
-        isGameOver = false;
-        player.position = Vector2(20, screenSize.height / 2 - PlayerShip.shipHeight / 2);
-        player.damageTimer = 0; // Reset invincibility
-        debugPrint('Player respawned!');
-      }
-      return; // Don't update game while waiting to respawn
-    }
+    // Halt all updates once game is over
+    if (isGameOver) return;
     
     // Remove off-screen shots
     shots.removeWhere((shot) {
@@ -297,6 +407,10 @@ class BlockBlasterGame extends FlameGame {
           lives--;
           player.takeDamage();
           debugPrint('Block hit player! Lives remaining: $lives');
+          if (lives <= 0) {
+            isGameOver = true;
+            onGameOver?.call();
+          }
         }
       }
     }
@@ -559,8 +673,8 @@ class BlockBlasterGame extends FlameGame {
         // Check if game over
         if (lives <= 0) {
           isGameOver = true;
-          respawnTimer = respawnDelay;
-          debugPrint('Game Over! Respawning in $respawnDelay seconds...');
+          onGameOver?.call();
+          debugPrint('Game Over!');
         }
       }
     }
