@@ -47,11 +47,13 @@ class GameScreen extends StatelessWidget {
 class BlockBlasterGame extends FlameGame with PanDetector {
   late PlayerShip player;
   late List<Shot> shots;
+  late List<Block> blocks;
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
     shots = [];
+    blocks = [];
     
     debugPrint('Game size: ${size.x} x ${size.y}');
     
@@ -61,6 +63,9 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     );
     player.position = Vector2(10, size.y / 2 - PlayerShip.shipHeight / 2);
     add(player);
+    
+    // Spawn some blocks
+    _spawnBlocks();
     
     debugPrint('BlockBlasterGame loaded!');
   }
@@ -77,6 +82,27 @@ class BlockBlasterGame extends FlameGame with PanDetector {
       }
       return false;
     });
+    
+    // Check bullet-block collisions
+    for (var shot in shots.toList()) {
+      for (var block in blocks.toList()) {
+        if (shot.toRect().overlaps(block.toRect()) && block.isVisible) {
+          debugPrint('Bullet hit block! Shot: ${shot.toRect()}, Block: ${block.toRect()}');
+          remove(shot);
+          shots.remove(shot);
+          block.hit();
+          break;
+        }
+      }
+    }
+    
+    // Check block-player collisions
+    for (var block in blocks.toList()) {
+      if (block.toRect().overlaps(player.toRect()) && block.isVisible) {
+        block.hit();
+        debugPrint('Block hit player!');
+      }
+    }
   }
 
   @override
@@ -87,6 +113,20 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   void addShot(Shot shot) {
     shots.add(shot);
     add(shot);
+  }
+
+  void addBlock(Block block) {
+    blocks.add(block);
+    add(block);
+  }
+
+  void _spawnBlocks() {
+    // Spawn a single block in the middle of the screen
+    final block = Block(
+      gameRef: this,
+    );
+    block.position = Vector2(size.x / 2, size.y / 2);
+    addBlock(block);
   }
 
   @override
@@ -144,6 +184,10 @@ class PlayerShip extends PositionComponent {
     gameRef.addShot(shot);
   }
 
+  Rect toRect() {
+    return Rect.fromLTWH(position.x, position.y, shipWidth, shipHeight);
+  }
+
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -199,7 +243,7 @@ class PlayerShip extends PositionComponent {
 class Shot extends PositionComponent {
   final BlockBlasterGame gameRef;
   static const double shotRadius = 8;
-  static const double shotSpeed = 400; // pixels per second
+  static const double shotSpeed = 1200; // pixels per second
 
   Shot({
     required this.gameRef,
@@ -230,6 +274,120 @@ class Shot extends PositionComponent {
       Offset.zero,
       shotRadius,
       paint,
+    );
+  }
+
+  Rect toRect() {
+    return Rect.fromLTWH(
+      position.x - shotRadius,
+      position.y - shotRadius,
+      shotRadius * 2,
+      shotRadius * 2,
+    );
+  }
+}
+
+class Block extends PositionComponent {
+  final BlockBlasterGame gameRef;
+  static const double blockSize = 40;
+  static const double blockSpeed = 0; // Block doesn't move
+  static const int maxHealth = 4;
+  static const double respawnTime = 2.0;
+
+  int health = maxHealth;
+  bool isVisible = true;
+  double respawnTimer = 0;
+
+  Block({
+    required this.gameRef,
+  });
+
+  @override
+  Future<void> onLoad() async {
+    super.onLoad();
+    size = Vector2(blockSize, blockSize);
+    anchor = Anchor.center;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    
+    // Handle respawn timer
+    if (!isVisible) {
+      respawnTimer -= dt;
+      if (respawnTimer <= 0) {
+        // Respawn the block
+        health = maxHealth;
+        isVisible = true;
+        respawnTimer = 0;
+        debugPrint('Block respawned!');
+      }
+    }
+  }
+
+  void hit() {
+    health--;
+    debugPrint('Block hit! Health: $health');
+    
+    if (health <= 0) {
+      isVisible = false;
+      respawnTimer = respawnTime;
+      debugPrint('Block disappeared! Will respawn in $respawnTime seconds');
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    
+    // Don't render if invisible
+    if (!isVisible) return;
+    
+    final paint = Paint()..color = const Color(0xFF808080);
+    final outlinePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    // Draw block as a filled square
+    canvas.drawRect(
+      Rect.fromLTWH(-blockSize / 2, -blockSize / 2, blockSize, blockSize),
+      paint,
+    );
+    // Draw outline
+    canvas.drawRect(
+      Rect.fromLTWH(-blockSize / 2, -blockSize / 2, blockSize, blockSize),
+      outlinePaint,
+    );
+    // Draw inner border for 3D effect
+    canvas.drawRect(
+      Rect.fromLTWH(-blockSize / 2 + 5, -blockSize / 2 + 5, blockSize - 10, blockSize - 10),
+      outlinePaint,
+    );
+    
+    // Draw health indicator
+    final healthText = health.toString();
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: healthText,
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      Offset(-textPainter.width / 2, -textPainter.height / 2),
+    );
+  }
+
+  Rect toRect() {
+    return Rect.fromLTWH(
+      position.x - blockSize / 2,
+      position.y - blockSize / 2,
+      blockSize,
+      blockSize,
     );
   }
 }
