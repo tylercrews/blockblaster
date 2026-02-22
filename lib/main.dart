@@ -299,7 +299,10 @@ class BlockBlasterGame extends FlameGame {
     // Check if we're transitioning to 2-finger mode
     if (touchPoints.length == 2 && !isTwoFingerMode) {
       isTwoFingerMode = true;
-      previousTouchPoints.clear(); // Clear all previous positions
+      // Store current positions as previous for next calculation
+      for (var entry in touchPoints.entries) {
+        previousTouchPoints[entry.key] = entry.value;
+      }
       // Don't apply rotation on first frame of 2-finger mode
       final points = touchPoints.values.toList();
       lastRotation = math.atan2(points[1].dy - points[0].dy, points[1].dx - points[0].dx);
@@ -316,12 +319,14 @@ class BlockBlasterGame extends FlameGame {
     }
     
     if (isTwoFingerMode && touchPoints.length == 2) {
-      // Multi-touch - check if both fingers are moving in same direction (parallel drag) or rotating
+      // Multi-touch - check if we should drag or rotate
       final points = touchPoints.values.toList();
       final p1 = points[0];
       final p2 = points[1];
       
       final prevPoints = previousTouchPoints.values.toList();
+      
+      // Check movement: if both fingers exist in previous and current
       if (prevPoints.length == 2) {
         final prevP1 = prevPoints[0];
         final prevP2 = prevPoints[1];
@@ -330,31 +335,30 @@ class BlockBlasterGame extends FlameGame {
         final delta1 = p1 - prevP1;
         final delta2 = p2 - prevP2;
         
-        // Check if both fingers moved in similar direction (dot product of normalized deltas)
-        final len1 = math.sqrt(delta1.dx * delta1.dx + delta1.dy * delta1.dy);
-        final len2 = math.sqrt(delta2.dx * delta2.dx + delta2.dy * delta2.dy);
+        // Calculate average movement
+        final avgMovement = ((delta1.dx.abs() + delta1.dy.abs() + delta2.dx.abs() + delta2.dy.abs()) / 4);
         
-        if (len1 > 1.0 && len2 > 1.0) {
-          // Both fingers moved significantly
-          final norm1 = Offset(delta1.dx / len1, delta1.dy / len1);
-          final norm2 = Offset(delta2.dx / len2, delta2.dy / len2);
-          final dotProduct = norm1.dx * norm2.dx + norm1.dy * norm2.dy;
-          
-          debugPrint('Two-finger dot product: $dotProduct');
-          
-          // If dot product > 0.7, fingers moving in parallel direction - allow ship movement
-          if (dotProduct > 0.7) {
-            debugPrint('Parallel drag detected - moving ship');
-            // Use average delta for ship movement
-            final avgDelta = Offset((delta1.dx + delta2.dx) / 2, (delta1.dy + delta2.dy) / 2);
-            _moveShip(Vector2(avgDelta.dx, avgDelta.dy));
-            previousTouchPoints[pointerId] = localPosition.toOffset();
-            return;
+        // Calculate change in distance between fingers (rotation indicator)
+        final prevDist = math.sqrt(math.pow(prevP2.dx - prevP1.dx, 2) + math.pow(prevP2.dy - prevP1.dy, 2));
+        final currDist = math.sqrt(math.pow(p2.dx - p1.dx, 2) + math.pow(p2.dy - p1.dy, 2));
+        final distChange = (currDist - prevDist).abs();
+        
+        debugPrint('Two-finger: avgMovement=$avgMovement, distChange=$distChange');
+        
+        // If movement is larger than distance change, prioritize movement
+        if (avgMovement > distChange && avgMovement > 2.0) {
+          debugPrint('Two-finger drag - moving ship');
+          final avgDelta = Offset((delta1.dx + delta2.dx) / 2, (delta1.dy + delta2.dy) / 2);
+          _moveShip(Vector2(avgDelta.dx, avgDelta.dy));
+          // Update previous positions for next frame
+          for (var entry in touchPoints.entries) {
+            previousTouchPoints[entry.key] = entry.value;
           }
+          return;
         }
       }
       
-      // Not a parallel drag, so calculate rotation
+      // Not a movement gesture, so calculate rotation
       debugPrint('Two-touch rotation: p1=$p1, p2=$p2');
       
       // Calculate angle between the two touch points
@@ -373,7 +377,10 @@ class BlockBlasterGame extends FlameGame {
       player.shipAngle += rotationDelta * 4.0;
       
       lastRotation = angle;
-      previousTouchPoints[pointerId] = localPosition.toOffset();
+      // Update previous positions for next frame
+      for (var entry in touchPoints.entries) {
+        previousTouchPoints[entry.key] = entry.value;
+      }
     } else if (touchPoints.length == 1) {
       // Single touch - move player
       if (previousPosition != null) {
