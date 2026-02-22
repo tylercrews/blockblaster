@@ -48,6 +48,7 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   late PlayerShip player;
   late List<Shot> shots;
   late List<Block> blocks;
+  int lives = 5;
 
   @override
   Future<void> onLoad() async {
@@ -99,8 +100,12 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     // Check block-player collisions
     for (var block in blocks.toList()) {
       if (block.toRect().overlaps(player.toRect()) && block.isVisible) {
-        block.hit();
-        debugPrint('Block hit player!');
+        // Only damage player if invincibility timer is expired
+        if (player.canTakeDamage()) {
+          lives--;
+          player.takeDamage();
+          debugPrint('Block hit player! Lives remaining: $lives');
+        }
       }
     }
   }
@@ -108,6 +113,72 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   @override
   Color backgroundColor() {
     return const Color(0xFF1a1a2e);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    _renderLives(canvas);
+  }
+
+  void _renderLives(Canvas canvas) {
+    const miniShipWidth = 20.0;
+    const miniShipHeight = 10.0;
+    const padding = 10.0;
+    const spacing = 25.0;
+
+    if (lives <= 3) {
+      // Show individual mini-ships
+      for (int i = 0; i < lives; i++) {
+        final x = padding + (i * spacing);
+        final y = padding;
+        _drawMiniShip(canvas, x, y, miniShipWidth, miniShipHeight);
+      }
+    } else {
+      // Show one mini-ship with "x #" indicator
+      _drawMiniShip(canvas, padding, padding, miniShipWidth, miniShipHeight);
+      
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: 'x $lives',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        const Offset(padding + miniShipWidth + 5, padding + 2),
+      );
+    }
+  }
+
+  void _drawMiniShip(Canvas canvas, double x, double y, double width, double height) {
+    final paint = Paint()..color = Colors.blue;
+    final outlinePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+
+    // Draw left half
+    canvas.drawRect(
+      Rect.fromLTWH(x, y, width / 2, height),
+      paint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(x, y, width / 2, height),
+      outlinePaint,
+    );
+
+    // Draw right half
+    canvas.drawRect(
+      Rect.fromLTWH(x + width / 2, y, width / 2, height),
+      paint,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(x + width / 2, y, width / 2, height),
+      outlinePaint,
+    );
   }
 
   void addShot(Shot shot) {
@@ -125,14 +196,35 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     final block = Block(
       gameRef: this,
     );
-    block.position = Vector2(size.x / 2, size.y / 2);
+    block.position = Vector2(size.x / 2 - Block.blockSize / 2, size.y / 2 - Block.blockSize / 2);
     addBlock(block);
   }
 
   @override
   void onPanUpdate(info) {
-    // Move player ship based on drag
-    player.position += info.delta.global;
+    // Calculate new position
+    final newPosition = player.position + info.delta.global;
+    
+    // Create a test rect for the new position
+    final testRect = Rect.fromLTWH(
+      newPosition.x,
+      newPosition.y,
+      PlayerShip.shipWidth,
+      PlayerShip.shipHeight,
+    );
+    
+    // Check if new position would collide with any blocks
+    bool canMove = true;
+    for (var block in blocks) {
+      if (block.isVisible && testRect.overlaps(block.toRect())) {
+        canMove = false;
+        break;
+      }
+    }
+    
+    if (canMove) {
+      player.position = newPosition;
+    }
     
     // Keep ship within bounds
     player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
@@ -146,6 +238,9 @@ class PlayerShip extends PositionComponent {
   final double shootInterval = 1 / 6; // 6 shots per second
   static const double shipWidth = 100;  // Width now spans horizontally
   static const double shipHeight = 50;  // Height is vertical depth
+  static const double damageInvincibilityTime = 1.0; // 1 second invincibility
+  
+  double damageTimer = 0; // Starts at 0, can take damage immediately
 
   PlayerShip({
     required this.gameRef,
@@ -162,6 +257,11 @@ class PlayerShip extends PositionComponent {
   void update(double dt) {
     super.update(dt);
     
+    // Update damage timer
+    if (damageTimer > 0) {
+      damageTimer -= dt;
+    }
+    
     // Update shoot timer
     shootTimer += dt;
     
@@ -170,6 +270,14 @@ class PlayerShip extends PositionComponent {
       _shoot();
       shootTimer = 0;
     }
+  }
+
+  bool canTakeDamage() {
+    return damageTimer <= 0;
+  }
+
+  void takeDamage() {
+    damageTimer = damageInvincibilityTime;
   }
 
   void _shoot() {
@@ -289,7 +397,7 @@ class Shot extends PositionComponent {
 
 class Block extends PositionComponent {
   final BlockBlasterGame gameRef;
-  static const double blockSize = 40;
+  static const double blockSize = 120; // Larger than the ship
   static const double blockSpeed = 0; // Block doesn't move
   static const int maxHealth = 4;
   static const double respawnTime = 2.0;
@@ -306,7 +414,7 @@ class Block extends PositionComponent {
   Future<void> onLoad() async {
     super.onLoad();
     size = Vector2(blockSize, blockSize);
-    anchor = Anchor.center;
+    anchor = Anchor.topLeft;
   }
 
   @override
@@ -352,17 +460,17 @@ class Block extends PositionComponent {
 
     // Draw block as a filled square
     canvas.drawRect(
-      Rect.fromLTWH(-blockSize / 2, -blockSize / 2, blockSize, blockSize),
+      Rect.fromLTWH(0, 0, blockSize, blockSize),
       paint,
     );
     // Draw outline
     canvas.drawRect(
-      Rect.fromLTWH(-blockSize / 2, -blockSize / 2, blockSize, blockSize),
+      Rect.fromLTWH(0, 0, blockSize, blockSize),
       outlinePaint,
     );
     // Draw inner border for 3D effect
     canvas.drawRect(
-      Rect.fromLTWH(-blockSize / 2 + 5, -blockSize / 2 + 5, blockSize - 10, blockSize - 10),
+      Rect.fromLTWH(5, 5, blockSize - 10, blockSize - 10),
       outlinePaint,
     );
     
@@ -378,14 +486,14 @@ class Block extends PositionComponent {
     textPainter.layout();
     textPainter.paint(
       canvas,
-      Offset(-textPainter.width / 2, -textPainter.height / 2),
+      Offset(blockSize / 2 - textPainter.width / 2, blockSize / 2 - textPainter.height / 2),
     );
   }
 
   Rect toRect() {
     return Rect.fromLTWH(
-      position.x - blockSize / 2,
-      position.y - blockSize / 2,
+      position.x,
+      position.y,
       blockSize,
       blockSize,
     );
