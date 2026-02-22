@@ -49,6 +49,9 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   late List<Shot> shots;
   late List<Block> blocks;
   int lives = 5;
+  bool isGameOver = false;
+  double respawnTimer = 0;
+  static const double respawnDelay = 2.0;
 
   @override
   Future<void> onLoad() async {
@@ -74,6 +77,20 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   @override
   void update(double dt) {
     super.update(dt);
+    
+    // Handle game over state
+    if (isGameOver) {
+      respawnTimer -= dt;
+      if (respawnTimer <= 0) {
+        // Respawn the player
+        lives = 5;
+        isGameOver = false;
+        player.position = Vector2(10, size.y / 2 - PlayerShip.shipHeight / 2);
+        player.damageTimer = 0; // Reset invincibility
+        debugPrint('Player respawned!');
+      }
+      return; // Don't update game while waiting to respawn
+    }
     
     // Remove off-screen shots
     shots.removeWhere((shot) {
@@ -215,15 +232,31 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     
     // Check if new position would collide with any blocks
     bool canMove = true;
+    Block? collidingBlock;
     for (var block in blocks) {
       if (block.isVisible && testRect.overlaps(block.toRect())) {
         canMove = false;
+        collidingBlock = block;
         break;
       }
     }
     
     if (canMove) {
       player.position = newPosition;
+    } else if (collidingBlock != null) {
+      // Player is being blocked by a block - apply damage
+      if (player.canTakeDamage()) {
+        lives--;
+        player.takeDamage();
+        debugPrint('Player hit block while moving! Lives remaining: $lives');
+        
+        // Check if game over
+        if (lives <= 0) {
+          isGameOver = true;
+          respawnTimer = respawnDelay;
+          debugPrint('Game Over! Respawning in $respawnDelay seconds...');
+        }
+      }
     }
     
     // Keep ship within bounds
@@ -256,6 +289,9 @@ class PlayerShip extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
+    
+    // Don't shoot if game is over
+    if (gameRef.isGameOver) return;
     
     // Update damage timer
     if (damageTimer > 0) {
@@ -299,6 +335,9 @@ class PlayerShip extends PositionComponent {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    
+    // Don't render if game is over
+    if (gameRef.isGameOver) return;
     
     final paint = Paint()..color = Colors.blue;
     final outlinePaint = Paint()
