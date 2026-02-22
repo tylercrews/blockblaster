@@ -26,13 +26,102 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const GameScreen(),
+      home: const MenuScreen(),
+    );
+  }
+}
+
+class MenuScreen extends StatelessWidget {
+  const MenuScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.of(context).size;
+    return Scaffold(
+      backgroundColor: const Color(0xFF1a1a2e),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'BLOCK BLASTER',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
+            ),
+            const SizedBox(height: 60),
+            _MenuButton(
+              label: 'PLAY GAME',
+              enabled: true,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => GameScreen(screenSize: screenSize),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            const _MenuButton(label: 'SETTINGS', enabled: false),
+            const SizedBox(height: 20),
+            const _MenuButton(label: 'HIGH SCORES', enabled: false),
+            const SizedBox(height: 20),
+            const _MenuButton(label: 'TUTORIAL', enabled: false),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuButton extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final VoidCallback? onPressed;
+
+  const _MenuButton({
+    required this.label,
+    required this.enabled,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 250,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: enabled ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: enabled ? Colors.deepPurple : Colors.grey.shade800,
+          foregroundColor: enabled ? Colors.white : Colors.grey.shade600,
+          disabledBackgroundColor: Colors.grey.shade800,
+          disabledForegroundColor: Colors.grey.shade600,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+            side: BorderSide(
+              color: enabled ? Colors.purpleAccent : Colors.grey.shade700,
+              width: 1.5,
+            ),
+          ),
+          textStyle: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+          ),
+        ),
+        child: Text(label),
+      ),
     );
   }
 }
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final Size screenSize;
+  const GameScreen({super.key, required this.screenSize});
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -45,7 +134,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    game = BlockBlasterGame();
+    game = BlockBlasterGame(screenSize: widget.screenSize);
   }
 
   void _handlePointerDown(PointerDownEvent event) {
@@ -87,7 +176,11 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class BlockBlasterGame extends FlameGame {
+  final Size screenSize;
+  BlockBlasterGame({required this.screenSize});
+
   late PlayerShip player;
+  
   late List<Shot> shots;
   late List<Block> blocks;
   int lives = 5;
@@ -125,20 +218,24 @@ class BlockBlasterGame extends FlameGame {
     shots = [];
     blocks = [];
     
-    debugPrint('Game size: ${size.x} x ${size.y}');
+    debugPrint('Screen size: ${screenSize.width} x ${screenSize.height}');
     
-    // Create the player ship on the left side, vertically centered
+    // Create the player ship on the left side, vertically centered using known screenSize
     player = PlayerShip(
       gameRef: this,
     );
-    player.position = Vector2(20, size.y / 2 - PlayerShip.shipHeight / 2);
+    player.position = Vector2(20, screenSize.height / 2 - PlayerShip.shipHeight / 2);
     add(player);
     
-    // Spawn some blocks
     _spawnBlocks();
     
     debugPrint('Player spawned at: ${player.position}');
     debugPrint('BlockBlasterGame loaded!');
+  }
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
   }
 
   @override
@@ -152,7 +249,7 @@ class BlockBlasterGame extends FlameGame {
         // Respawn the player
         lives = 5;
         isGameOver = false;
-        player.position = Vector2(10, size.y / 2 - PlayerShip.shipHeight / 2);
+        player.position = Vector2(20, screenSize.height / 2 - PlayerShip.shipHeight / 2);
         player.damageTimer = 0; // Reset invincibility
         debugPrint('Player respawned!');
       }
@@ -276,24 +373,25 @@ class BlockBlasterGame extends FlameGame {
   }
 
   void _spawnBlocks() {
-    // Spawn 5 blocks in a row on the right side of the screen
-    const blockGap = 10.0;
+    // Spawn 5 blocks spanning the full height of the screen
     const blockSize = 50.0;
-    const totalBlockHeight = blockSize * 5 + blockGap * 4;
-    final x = size.x - blockSize - 50; // Right side with margin
-    final startY = (size.y - totalBlockHeight) / 2;
+    const numBlocks = 5;
+    // Use screenSize for reliable dimensions
+    final screenH = screenSize.height;
+    final screenW = screenSize.width;
+    final x = screenW - blockSize - 50; // Right side with margin
+    // Calculate gap so blocks span from top to bottom edge
+    final totalGap = screenH - (blockSize * numBlocks);
+    final blockGap = totalGap / (numBlocks - 1);
     
-    debugPrint('Spawning blocks: gameSize=${size.x}x${size.y}, totalBlockHeight=$totalBlockHeight, x=$x, startY=$startY');
+    debugPrint('Spawning blocks: screenSize=${screenW}x${screenH}, x=$x, blockGap=$blockGap');
     
-    for (int i = 0; i < 5; i++) {
-      final block = Block(
-        gameRef: this,
-      );
-      final yPos = startY + i * (blockSize + blockGap);
+    for (int i = 0; i < numBlocks; i++) {
+      final block = Block(gameRef: this);
+      final yPos = i * (blockSize + blockGap);
       block.position = Vector2(x, yPos);
       debugPrint('Block $i spawned at position: ($x, $yPos)');
       addBlock(block);
-      debugPrint('Block $i added to game');
     }
     debugPrint('Total blocks in game: ${blocks.length}');
   }
