@@ -99,6 +99,7 @@ class BlockBlasterGame extends FlameGame {
   final Map<int, Offset> touchPoints = {};
   final Map<int, Offset> previousTouchPoints = {};
   double lastRotation = 0;
+  bool isTwoFingerMode = false;
   
   // Public touch handlers
   void handleTouchDown(int pointerId, Vector2 localPosition) {
@@ -295,7 +296,42 @@ class BlockBlasterGame extends FlameGame {
     touchPoints[pointerId] = localPosition.toOffset();
     debugPrint('Touch update: ID=$pointerId, current=$localPosition, previous=$previousPosition, touchCount=${touchPoints.length}');
     
-    if (touchPoints.length == 1) {
+    // Check if we're transitioning to 2-finger mode
+    if (touchPoints.length == 2 && !isTwoFingerMode) {
+      isTwoFingerMode = true;
+      previousTouchPoints.clear(); // Clear all previous positions
+      // Don't apply rotation on first frame of 2-finger mode
+      final points = touchPoints.values.toList();
+      lastRotation = math.atan2(points[1].dy - points[0].dy, points[1].dx - points[0].dx);
+      debugPrint('Entering two-finger mode, initialized lastRotation to $lastRotation');
+      return;
+    }
+    
+    if (isTwoFingerMode && touchPoints.length == 2) {
+      // Multi-touch - calculate rotation only
+      final points = touchPoints.values.toList();
+      final p1 = points[0];
+      final p2 = points[1];
+      
+      debugPrint('Two-touch rotation: p1=$p1, p2=$p2');
+      
+      // Calculate angle between the two touch points
+      final angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx);
+      
+      // Calculate delta from last rotation
+      double rotationDelta = angle - lastRotation;
+      
+      // Normalize rotation delta to [-pi, pi]
+      while (rotationDelta > math.pi) rotationDelta -= 2 * math.pi;
+      while (rotationDelta < -math.pi) rotationDelta += 2 * math.pi;
+      
+      debugPrint('Rotation delta: $rotationDelta rad');
+      
+      // Apply rotation to ship
+      player.shipAngle += rotationDelta * 1.5;
+      
+      lastRotation = angle;
+    } else if (touchPoints.length == 1 && !isTwoFingerMode) {
       // Single touch - move player
       if (previousPosition != null) {
         final delta = localPosition.toOffset() - previousPosition;
@@ -343,33 +379,9 @@ class BlockBlasterGame extends FlameGame {
         player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
         player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
       }
-    } else if (touchPoints.length == 2) {
-      // Multi-touch - calculate rotation
-      final points = touchPoints.values.toList();
-      final p1 = points[0];
-      final p2 = points[1];
-      
-      debugPrint('Two-touch rotation: p1=$p1, p2=$p2');
-      
-      // Calculate angle between the two touch points
-      final angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx);
-      
-      // Calculate delta from last rotation
-      double rotationDelta = angle - lastRotation;
-      
-      // Normalize rotation delta to [-pi, pi]
-      while (rotationDelta > math.pi) rotationDelta -= 2 * math.pi;
-      while (rotationDelta < -math.pi) rotationDelta += 2 * math.pi;
-      
-      debugPrint('Rotation delta: $rotationDelta rad');
-      
-      // Apply rotation to ship (scale it down to make it more controllable)
-      player.shipAngle += rotationDelta * 1.5;
-      
-      lastRotation = angle;
+      // Store previous position for next single-touch update
+      previousTouchPoints[pointerId] = localPosition.toOffset();
     }
-    
-    previousTouchPoints[pointerId] = localPosition.toOffset();
   }
   
   void onTouchUp(int pointerId) {
@@ -377,6 +389,7 @@ class BlockBlasterGame extends FlameGame {
     previousTouchPoints.remove(pointerId);
     if (touchPoints.isEmpty) {
       lastRotation = 0;
+      isTwoFingerMode = false;
     }
   }
   
@@ -385,6 +398,7 @@ class BlockBlasterGame extends FlameGame {
     previousTouchPoints.remove(pointerId);
     if (touchPoints.isEmpty) {
       lastRotation = 0;
+      isTwoFingerMode = false;
     }
   }
 }
