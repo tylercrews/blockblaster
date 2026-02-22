@@ -276,12 +276,26 @@ class BlockBlasterGame extends FlameGame {
   }
 
   void _spawnBlocks() {
-    // Spawn a single block in the middle of the screen
-    final block = Block(
-      gameRef: this,
-    );
-    block.position = Vector2(size.x / 2 - Block.blockSize / 2, size.y / 2 - Block.blockSize / 2);
-    addBlock(block);
+    // Spawn 5 blocks in a row on the right side of the screen
+    const blockGap = 10.0;
+    const blockSize = 50.0;
+    const totalBlockHeight = blockSize * 5 + blockGap * 4;
+    final x = size.x - blockSize - 50; // Right side with margin
+    final startY = (size.y - totalBlockHeight) / 2;
+    
+    debugPrint('Spawning blocks: gameSize=${size.x}x${size.y}, totalBlockHeight=$totalBlockHeight, x=$x, startY=$startY');
+    
+    for (int i = 0; i < 5; i++) {
+      final block = Block(
+        gameRef: this,
+      );
+      final yPos = startY + i * (blockSize + blockGap);
+      block.position = Vector2(x, yPos);
+      debugPrint('Block $i spawned at position: ($x, $yPos)');
+      addBlock(block);
+      debugPrint('Block $i added to game');
+    }
+    debugPrint('Total blocks in game: ${blocks.length}');
   }
 
 
@@ -646,7 +660,7 @@ class Shot extends PositionComponent {
 
 class Block extends PositionComponent {
   final BlockBlasterGame gameRef;
-  static const double blockSize = 120; // Larger than the ship
+  static const double blockSize = 50; // Smaller blocks
   static const double blockSpeed = 0; // Block doesn't move
   static const int maxHealth = 4;
   static const double respawnTime = 2.0;
