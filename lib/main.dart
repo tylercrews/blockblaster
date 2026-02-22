@@ -527,10 +527,10 @@ class PlayerShip extends PositionComponent {
     final shot = Shot(
       gameRef: gameRef,
     );
-    // Spawn from the front of the ship in the direction it's pointing
+    // Spawn from the front edge of the ship in the direction it's pointing
     final shipCenterX = position.x + shipWidth / 2;
     final shipCenterY = position.y + shipHeight / 2;
-    final distance = 80.0; // Distance from center to spawn point
+    final distance = shipWidth / 2; // Just to the front edge of the ship
     
     shot.position = Vector2(
       shipCenterX + distance * math.cos(shipAngle),
