@@ -346,7 +346,7 @@ class BlockBlasterGame extends FlameGame {
         debugPrint('Two-finger: avgMovement=$avgMovement, distChange=$distChange');
         
         // If movement is larger than distance change, prioritize movement
-        if (avgMovement > distChange && avgMovement > 2.0) {
+        if (avgMovement > distChange && avgMovement > 0.25) { // TWO TOUCH DRAG SENSITIVITY
           debugPrint('Two-finger drag - moving ship');
           final avgDelta = Offset((delta1.dx + delta2.dx) / 2, (delta1.dy + delta2.dy) / 2);
           _moveShip(Vector2(avgDelta.dx, avgDelta.dy));
