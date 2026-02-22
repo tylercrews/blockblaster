@@ -3,7 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/input.dart';
-// import 'dart:gmath' as math;
+import 'dart:math' as math;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,20 +31,62 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class GameScreen extends StatelessWidget {
+class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
+
+  @override
+  State<GameScreen> createState() => _GameScreenState();
+}
+
+class _GameScreenState extends State<GameScreen> {
+  late BlockBlasterGame game;
+  final Map<int, Offset> activePointers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    game = BlockBlasterGame();
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    activePointers[event.pointer] = event.localPosition;
+    game.handleTouchDown(event.pointer, Vector2(event.localPosition.dx, event.localPosition.dy));
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    activePointers[event.pointer] = event.localPosition;
+    game.handleTouchUpdate(event.pointer, Vector2(event.localPosition.dx, event.localPosition.dy));
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    activePointers.remove(event.pointer);
+    game.handleTouchUp(event.pointer);
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    activePointers.remove(event.pointer);
+    game.handleTouchCancel(event.pointer);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GameWidget(
-        game: BlockBlasterGame(),
+      body: Listener(
+        onPointerDown: _handlePointerDown,
+        onPointerMove: _handlePointerMove,
+        onPointerUp: _handlePointerUp,
+        onPointerCancel: _handlePointerCancel,
+        child: SizedBox.expand(
+          child: GameWidget(
+            game: game,
+          ),
+        ),
       ),
     );
   }
 }
 
-class BlockBlasterGame extends FlameGame with PanDetector {
+class BlockBlasterGame extends FlameGame {
   late PlayerShip player;
   late List<Shot> shots;
   late List<Block> blocks;
@@ -52,10 +94,33 @@ class BlockBlasterGame extends FlameGame with PanDetector {
   bool isGameOver = false;
   double respawnTimer = 0;
   static const double respawnDelay = 2.0;
+  
+  // Multi-touch rotation tracking
+  final Map<int, Offset> touchPoints = {};
+  final Map<int, Offset> previousTouchPoints = {};
+  double lastRotation = 0;
+  
+  // Public touch handlers
+  void handleTouchDown(int pointerId, Vector2 localPosition) {
+    onTouchDown(pointerId, localPosition);
+  }
+  
+  void handleTouchUpdate(int pointerId, Vector2 localPosition) {
+    onTouchUpdate(pointerId, localPosition);
+  }
+  
+  void handleTouchUp(int pointerId) {
+    onTouchUp(pointerId);
+  }
+  
+  void handleTouchCancel(int pointerId) {
+    onTouchCancel(pointerId);
+  }
 
   @override
   Future<void> onLoad() async {
     super.onLoad();
+    
     shots = [];
     blocks = [];
     
@@ -65,12 +130,13 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     player = PlayerShip(
       gameRef: this,
     );
-    player.position = Vector2(10, size.y / 2 - PlayerShip.shipHeight / 2);
+    player.position = Vector2(20, size.y / 2 - PlayerShip.shipHeight / 2);
     add(player);
     
     // Spawn some blocks
     _spawnBlocks();
     
+    debugPrint('Player spawned at: ${player.position}');
     debugPrint('BlockBlasterGame loaded!');
   }
 
@@ -217,51 +283,109 @@ class BlockBlasterGame extends FlameGame with PanDetector {
     addBlock(block);
   }
 
-  @override
-  void onPanUpdate(info) {
-    // Calculate new position
-    final newPosition = player.position + info.delta.global;
+
+  
+  void onTouchDown(int pointerId, Vector2 localPosition) {
+    debugPrint('Touch down: ID=$pointerId, pos=$localPosition');
+    touchPoints[pointerId] = localPosition.toOffset();
+  }
+  
+  void onTouchUpdate(int pointerId, Vector2 localPosition) {
+    final previousPosition = previousTouchPoints[pointerId];
+    touchPoints[pointerId] = localPosition.toOffset();
+    debugPrint('Touch update: ID=$pointerId, current=$localPosition, previous=$previousPosition, touchCount=${touchPoints.length}');
     
-    // Create a test rect for the new position
-    final testRect = Rect.fromLTWH(
-      newPosition.x,
-      newPosition.y,
-      PlayerShip.shipWidth,
-      PlayerShip.shipHeight,
-    );
-    
-    // Check if new position would collide with any blocks
-    bool canMove = true;
-    Block? collidingBlock;
-    for (var block in blocks) {
-      if (block.isVisible && testRect.overlaps(block.toRect())) {
-        canMove = false;
-        collidingBlock = block;
-        break;
-      }
-    }
-    
-    if (canMove) {
-      player.position = newPosition;
-    } else if (collidingBlock != null) {
-      // Player is being blocked by a block - apply damage
-      if (player.canTakeDamage()) {
-        lives--;
-        player.takeDamage();
-        debugPrint('Player hit block while moving! Lives remaining: $lives');
+    if (touchPoints.length == 1) {
+      // Single touch - move player
+      if (previousPosition != null) {
+        final delta = localPosition.toOffset() - previousPosition;
+        debugPrint('Single touch delta: $delta');
+        final newPosition = player.position + Vector2(delta.dx, delta.dy);
         
-        // Check if game over
-        if (lives <= 0) {
-          isGameOver = true;
-          respawnTimer = respawnDelay;
-          debugPrint('Game Over! Respawning in $respawnDelay seconds...');
+        // Create a test rect for the new position
+        final testRect = Rect.fromLTWH(
+          newPosition.x,
+          newPosition.y,
+          PlayerShip.shipWidth,
+          PlayerShip.shipHeight,
+        );
+        
+        // Check if new position would collide with any blocks
+        bool canMove = true;
+        Block? collidingBlock;
+        for (var block in blocks) {
+          if (block.isVisible && testRect.overlaps(block.toRect())) {
+            canMove = false;
+            collidingBlock = block;
+            break;
+          }
         }
+        
+        if (canMove) {
+          player.position = newPosition;
+        } else if (collidingBlock != null) {
+          // Player is being blocked by a block - apply damage
+          if (player.canTakeDamage()) {
+            lives--;
+            player.takeDamage();
+            debugPrint('Player hit block while moving! Lives remaining: $lives');
+            
+            // Check if game over
+            if (lives <= 0) {
+              isGameOver = true;
+              respawnTimer = respawnDelay;
+              debugPrint('Game Over! Respawning in $respawnDelay seconds...');
+            }
+          }
+        }
+        
+        // Keep ship within bounds
+        player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
+        player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
       }
+    } else if (touchPoints.length == 2) {
+      // Multi-touch - calculate rotation
+      final points = touchPoints.values.toList();
+      final p1 = points[0];
+      final p2 = points[1];
+      
+      debugPrint('Two-touch rotation: p1=$p1, p2=$p2');
+      
+      // Calculate angle between the two touch points
+      final angle = math.atan2(p2.dy - p1.dy, p2.dx - p1.dx);
+      
+      // Calculate delta from last rotation
+      double rotationDelta = angle - lastRotation;
+      
+      // Normalize rotation delta to [-pi, pi]
+      while (rotationDelta > math.pi) rotationDelta -= 2 * math.pi;
+      while (rotationDelta < -math.pi) rotationDelta += 2 * math.pi;
+      
+      debugPrint('Rotation delta: $rotationDelta rad');
+      
+      // Apply rotation to ship (scale it down to make it more controllable)
+      player.shipAngle += rotationDelta * 0.5;
+      
+      lastRotation = angle;
     }
     
-    // Keep ship within bounds
-    player.position.x = player.position.x.clamp(0, size.x - PlayerShip.shipWidth);
-    player.position.y = player.position.y.clamp(0, size.y - PlayerShip.shipHeight);
+    previousTouchPoints[pointerId] = localPosition.toOffset();
+  }
+  
+  void onTouchUp(int pointerId) {
+    touchPoints.remove(pointerId);
+    previousTouchPoints.remove(pointerId);
+    if (touchPoints.isEmpty) {
+      lastRotation = 0;
+    }
+  }
+  
+  void onTouchCancel(int pointerId) {
+    touchPoints.remove(pointerId);
+    previousTouchPoints.remove(pointerId);
+    if (touchPoints.isEmpty) {
+      lastRotation = 0;
+    }
   }
 }
 
@@ -274,6 +398,7 @@ class PlayerShip extends PositionComponent {
   static const double damageInvincibilityTime = 1.0; // 1 second invincibility
   
   double damageTimer = 0; // Starts at 0, can take damage immediately
+  double shipAngle = 0; // Rotation angle in radians
 
   PlayerShip({
     required this.gameRef,
@@ -320,11 +445,16 @@ class PlayerShip extends PositionComponent {
     final shot = Shot(
       gameRef: gameRef,
     );
-    // Spawn from the front (right side) center of the ship
+    // Spawn from the front of the ship in the direction it's pointing
+    final shipCenterX = position.x + shipWidth / 2;
+    final shipCenterY = position.y + shipHeight / 2;
+    final distance = 80.0; // Distance from center to spawn point
+    
     shot.position = Vector2(
-      position.x + shipWidth,
-      position.y + shipHeight / 2,
+      shipCenterX + distance * math.cos(shipAngle),
+      shipCenterY + distance * math.sin(shipAngle),
     );
+    shot.angle = shipAngle; // Set bullet angle
     gameRef.addShot(shot);
   }
 
@@ -338,6 +468,14 @@ class PlayerShip extends PositionComponent {
     
     // Don't render if game is over
     if (gameRef.isGameOver) return;
+    
+    // Save canvas state
+    canvas.save();
+    
+    // Translate to ship center, rotate, then translate back
+    canvas.translate(shipWidth / 2, shipHeight / 2);
+    canvas.rotate(shipAngle);
+    canvas.translate(-shipWidth / 2, -shipHeight / 2);
     
     final paint = Paint()..color = Colors.blue;
     final outlinePaint = Paint()
@@ -384,6 +522,9 @@ class PlayerShip extends PositionComponent {
       ),
       outlinePaint,
     );
+    
+    // Restore canvas state
+    canvas.restore();
   }
 }
 
@@ -406,8 +547,9 @@ class Shot extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    // Move shot rightward
-    position.x += shotSpeed * dt;
+    // Move shot in the direction of its angle
+    position.x += shotSpeed * dt * math.cos(angle);
+    position.y += shotSpeed * dt * math.sin(angle);
   }
 
   @override
