@@ -280,7 +280,7 @@ class BlockBlasterGame extends FlameGame {
     
     // Check block-player collisions
     for (var block in blocks.toList()) {
-      if (block.toRect().overlaps(player.toRect()) && block.isVisible) {
+      if (player.overlapsRect(block.toRect()) && block.isVisible) {
         // Only damage player if invincibility timer is expired
         if (player.canTakeDamage()) {
           lives--;
@@ -508,19 +508,11 @@ class BlockBlasterGame extends FlameGame {
   void _moveShip(Vector2 delta) {
     final newPosition = player.position + delta;
     
-    // Create a test rect for the new position
-    final testRect = Rect.fromLTWH(
-      newPosition.x,
-      newPosition.y,
-      PlayerShip.shipWidth,
-      PlayerShip.shipHeight,
-    );
-    
     // Check if new position would collide with any blocks
     bool canMove = true;
     Block? collidingBlock;
     for (var block in blocks) {
-      if (block.isVisible && testRect.overlaps(block.toRect())) {
+      if (block.isVisible && player.overlapsRectAtPosition(newPosition, block.toRect())) {
         canMove = false;
         collidingBlock = block;
         break;
@@ -638,8 +630,69 @@ class PlayerShip extends PositionComponent {
     gameRef.addShot(shot);
   }
 
-  Rect toRect() {
-    return Rect.fromLTWH(position.x, position.y, shipWidth, shipHeight);
+  /// Returns true if this ship's rotated hitbox overlaps [rect].
+  bool overlapsRect(Rect rect) {
+    return _obbOverlapsRect(
+      position.x + shipWidth / 2,
+      position.y + shipHeight / 2,
+      shipWidth / 2,
+      shipHeight / 2,
+      shipAngle,
+      rect,
+    );
+  }
+
+  /// Returns true if the ship, placed at [pos], would overlap [rect].
+  bool overlapsRectAtPosition(Vector2 pos, Rect rect) {
+    return _obbOverlapsRect(
+      pos.x + shipWidth / 2,
+      pos.y + shipHeight / 2,
+      shipWidth / 2,
+      shipHeight / 2,
+      shipAngle,
+      rect,
+    );
+  }
+
+  /// SAT (Separating Axis Theorem) test between an OBB and an AABB.
+  /// The OBB is described by its center (cx, cy), half-extents (hw, hh),
+  /// and rotation angle.  The AABB is [rect].
+  static bool _obbOverlapsRect(
+    double cx,
+    double cy,
+    double hw,
+    double hh,
+    double angle,
+    Rect rect,
+  ) {
+    final cosA = math.cos(angle);
+    final sinA = math.sin(angle);
+
+    // --- Axis 1: World X (1, 0) ---
+    final obbExtentX = hw * cosA.abs() + hh * sinA.abs();
+    if (cx + obbExtentX < rect.left || cx - obbExtentX > rect.right) return false;
+
+    // --- Axis 2: World Y (0, 1) ---
+    final obbExtentY = hw * sinA.abs() + hh * cosA.abs();
+    if (cy + obbExtentY < rect.top || cy - obbExtentY > rect.bottom) return false;
+
+    // Use rect center + half-extents for axes 3 & 4
+    final rcx = (rect.left + rect.right) / 2;
+    final rcy = (rect.top + rect.bottom) / 2;
+    final rhw = (rect.right - rect.left) / 2;
+    final rhh = (rect.bottom - rect.top) / 2;
+
+    // --- Axis 3: Ship local X (cosA, sinA) ---
+    final d3 = (rcx - cx) * cosA + (rcy - cy) * sinA;
+    final rectExt3 = rhw * cosA.abs() + rhh * sinA.abs();
+    if (d3.abs() > hw + rectExt3) return false;
+
+    // --- Axis 4: Ship local Y (-sinA, cosA) ---
+    final d4 = (rcx - cx) * (-sinA) + (rcy - cy) * cosA;
+    final rectExt4 = rhw * sinA.abs() + rhh * cosA.abs();
+    if (d4.abs() > hh + rectExt4) return false;
+
+    return true;
   }
 
   @override
