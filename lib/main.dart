@@ -328,7 +328,7 @@ class BlockBlasterGame extends FlameGame {
       debugPrint('Rotation delta: $rotationDelta rad');
       
       // Apply rotation to ship
-      player.shipAngle += rotationDelta * 1.5;
+      player.shipAngle += rotationDelta * 4.0; // ROTATION SENSITIVITY
       
       lastRotation = angle;
     } else if (touchPoints.length == 1 && !isTwoFingerMode) {
