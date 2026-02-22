@@ -7,7 +7,8 @@ import 'package:flutter/services.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeRight,
+    DeviceOrientation.landscapeLeft,
   ]).then((_) {
     runApp(const MyApp());
   });
@@ -35,10 +36,6 @@ class GameScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BlockBlaster'),
-        centerTitle: true,
-      ),
       body: GameWidget(game: BlockBlasterGame()),
     );
   }
@@ -55,11 +52,11 @@ class BlockBlasterGame extends FlameGame {
     
     debugPrint('Game size: ${size.x} x ${size.y}');
     
-    // Create the player ship in the center-bottom of the screen
+    // Create the player ship on the left side, vertically centered
     player = PlayerShip(
       gameRef: this,
     );
-    player.position = Vector2(size.x / 2, size.y - 100);
+    player.position = Vector2(10, size.y / 2 - PlayerShip.shipHeight / 2);
     add(player);
     
     debugPrint('BlockBlasterGame loaded!');
@@ -71,7 +68,7 @@ class BlockBlasterGame extends FlameGame {
     
     // Remove off-screen shots
     shots.removeWhere((shot) {
-      if (shot.position.y < 0) {
+      if (shot.position.x > size.x) {
         remove(shot);
         return true;
       }
@@ -94,8 +91,8 @@ class PlayerShip extends PositionComponent {
   final BlockBlasterGame gameRef;
   double shootTimer = 0;
   final double shootInterval = 1 / 6; // 6 shots per second
-  static const double shipWidth = 60;
-  static const double shipHeight = 50;
+  static const double shipWidth = 100;  // Width now spans horizontally
+  static const double shipHeight = 50;  // Height is vertical depth
 
   PlayerShip({
     required this.gameRef,
@@ -105,6 +102,7 @@ class PlayerShip extends PositionComponent {
   Future<void> onLoad() async {
     super.onLoad();
     size = Vector2(shipWidth, shipHeight);
+    anchor = Anchor.topLeft;
   }
 
   @override
@@ -125,7 +123,7 @@ class PlayerShip extends PositionComponent {
     final shot = Shot(
       gameRef: gameRef,
     );
-    shot.position = Vector2(position.x, position.y - shipHeight / 2);
+    shot.position = Vector2(position.x + shipWidth + 10, position.y + shipHeight / 2);
     gameRef.addShot(shot);
   }
 
@@ -139,11 +137,11 @@ class PlayerShip extends PositionComponent {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    // Draw left half of ship
+    // Draw left half of ship (left side, horizontal)
     canvas.drawRect(
       Rect.fromLTWH(
-        -shipWidth / 2,
-        -shipHeight / 2,
+        0,
+        0,
         shipWidth / 2,
         shipHeight,
       ),
@@ -151,19 +149,19 @@ class PlayerShip extends PositionComponent {
     );
     canvas.drawRect(
       Rect.fromLTWH(
-        -shipWidth / 2,
-        -shipHeight / 2,
+        0,
+        0,
         shipWidth / 2,
         shipHeight,
       ),
       outlinePaint,
     );
 
-    // Draw right half of ship
+    // Draw right half of ship (right side, horizontal)
     canvas.drawRect(
       Rect.fromLTWH(
+        shipWidth / 2,
         0,
-        -shipHeight / 2,
         shipWidth / 2,
         shipHeight,
       ),
@@ -171,8 +169,8 @@ class PlayerShip extends PositionComponent {
     );
     canvas.drawRect(
       Rect.fromLTWH(
+        shipWidth / 2,
         0,
-        -shipHeight / 2,
         shipWidth / 2,
         shipHeight,
       ),
@@ -194,13 +192,14 @@ class Shot extends PositionComponent {
   Future<void> onLoad() async {
     super.onLoad();
     size = Vector2(shotRadius * 2, shotRadius * 2);
+    anchor = Anchor.center;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    // Move shot upward
-    position.y -= shotSpeed * dt;
+    // Move shot rightward
+    position.x += shotSpeed * dt;
   }
 
   @override
