@@ -6,9 +6,10 @@ import 'package:flutter/material.dart';
 /// Yellow → Chartreuse → Green → Spring Green → Cyan → Sky Blue → Blue →
 /// Indigo → Violet → Magenta → Pink.
 ///
-/// Each [ColorFamily] contains 5 shades ordered lightest → darkest (index 0–4).
-/// [ColorFamily.preview] returns index 2 (the pure/medium shade) for use
-/// as a compact family chip in a color selector.
+/// Each [ColorFamily] contains 10 shades ordered lightest → darkest (index 0–9).
+/// Index 5 is the pure saturated hue. Shades 0–4 mix toward white;
+/// shades 6–9 mix toward black.
+/// [ColorFamily.preview] returns index 5 for use as a compact family chip.
 ///
 /// [grayscale] provides 10 steps from white (index 0) to black (index 9).
 
@@ -19,183 +20,260 @@ import 'package:flutter/material.dart';
 class ColorFamily {
   final String name;
 
-  /// 5 shades: 0 = very light, 1 = light, 2 = medium (pure), 3 = dark, 4 = very dark.
+  /// 10 shades: 0 = pastel (near white) … 5 = pure hue … 9 = deep (near black).
   final List<Color> shades;
 
   const ColorFamily({required this.name, required this.shades});
 
-  /// Representative swatch for family preview chips.
-  Color get preview => shades[2];
+  /// Representative swatch for family preview chips (pure hue).
+  Color get preview => shades[5];
 
   /// Convenience accessors.
-  Color get veryLight => shades[0];
-  Color get light => shades[1];
-  Color get medium => shades[2];
-  Color get dark => shades[3];
-  Color get veryDark => shades[4];
+  Color get pastel    => shades[0];
+  Color get veryLight => shades[1];
+  Color get light     => shades[2];
+  Color get medium    => shades[5]; // pure hue
+  Color get dark      => shades[7];
+  Color get veryDark  => shades[8];
+  Color get deep      => shades[9];
 }
 
 // ---------------------------------------------------------------------------
-// Color families  (CMYK → hex conversion, K=0 is medium, K=30/60 darken,
-//                  reduced chroma lightens toward white)
+// Color families  (10 shades each: 0–4 lighten toward white, 5 = pure hue,
+//                  6–9 darken toward black)
 // ---------------------------------------------------------------------------
 
 const List<ColorFamily> colorFamilies = [
   // --- Reds / Warm -----------------------------------------------------------
   ColorFamily(
-    name: 'Red',          // CMYK base: 0, 100, 100, 0
+    name: 'Red',
     shades: [
-      Color(0xFFFFCCCC),  // very light
-      Color(0xFFFF8080),  // light
-      Color(0xFFFF0000),  // medium  ← pure red
-      Color(0xFFB30000),  // dark
-      Color(0xFF660000),  // very dark
+      Color(0xFFFFE6E6), // 0 pastel
+      Color(0xFFFFCCCC), // 1 very light
+      Color(0xFFFFA6A6), // 2 light
+      Color(0xFFFF8080), // 3 light-medium
+      Color(0xFFFF4D4D), // 4 medium-light
+      Color(0xFFFF0000), // 5 pure ← preview
+      Color(0xFFD90000), // 6 medium-dark
+      Color(0xFFA60000), // 7 dark
+      Color(0xFF730000), // 8 very dark
+      Color(0xFF400000), // 9 deep
     ],
   ),
   ColorFamily(
-    name: 'Vermillion',   // CMYK base: 0, 65, 100, 0
+    name: 'Vermillion',
     shades: [
-      Color(0xFFFFDECC),
-      Color(0xFFFFAB80),
-      Color(0xFFFF5900),
-      Color(0xFFB33E00),
-      Color(0xFF662400),
+      Color(0xFFFFEEE6),
+      Color(0xFFFFDECE),
+      Color(0xFFFFC5A6),
+      Color(0xFFFFAC80),
+      Color(0xFFFF8B4D),
+      Color(0xFFFF5900), // pure
+      Color(0xFFD94C00),
+      Color(0xFFA63A00),
+      Color(0xFF732800),
+      Color(0xFF401600),
     ],
   ),
   ColorFamily(
-    name: 'Orange',       // CMYK base: 0, 40, 100, 0
+    name: 'Orange',
     shades: [
+      Color(0xFFFFF5E6),
       Color(0xFFFFEBCC),
+      Color(0xFFFFDBA6),
       Color(0xFFFFCC80),
-      Color(0xFFFF9900),
-      Color(0xFFB36B00),
-      Color(0xFF663D00),
+      Color(0xFFFFB84D),
+      Color(0xFFFF9900), // pure
+      Color(0xFFD98200),
+      Color(0xFFA66300),
+      Color(0xFF734500),
+      Color(0xFF402600),
     ],
   ),
   ColorFamily(
-    name: 'Amber',        // CMYK base: 0, 20, 100, 0
+    name: 'Amber',
     shades: [
+      Color(0xFFFFFAE6),
       Color(0xFFFFF5CC),
+      Color(0xFFFFEDA6),
       Color(0xFFFFE680),
-      Color(0xFFFFCC00),
-      Color(0xFFB38F00),
-      Color(0xFF665200),
+      Color(0xFFFFDB4D),
+      Color(0xFFFFCC00), // pure
+      Color(0xFFD9AD00),
+      Color(0xFFA68500),
+      Color(0xFF735C00),
+      Color(0xFF403300),
     ],
   ),
 
   // --- Yellows / Greens ------------------------------------------------------
   ColorFamily(
-    name: 'Yellow',       // CMYK base: 0, 0, 100, 0
+    name: 'Yellow',
     shades: [
+      Color(0xFFFFFFE6),
       Color(0xFFFFFFCC),
+      Color(0xFFFFFFA6),
       Color(0xFFFFFF80),
-      Color(0xFFFFFF00),
-      Color(0xFFB3B300),
-      Color(0xFF666600),
+      Color(0xFFFFFF4D),
+      Color(0xFFFFFF00), // pure
+      Color(0xFFD9D900),
+      Color(0xFFA6A600),
+      Color(0xFF737300),
+      Color(0xFF404000),
     ],
   ),
   ColorFamily(
-    name: 'Chartreuse',   // CMYK base: 25, 0, 100, 0
+    name: 'Chartreuse',
     shades: [
+      Color(0xFFF9FFE6),
       Color(0xFFF2FFCC),
-      Color(0xFFDEFF80),
-      Color(0xFFBFFF00),
-      Color(0xFF86B300),
-      Color(0xFF4C6600),
+      Color(0xFFE9FFA6),
+      Color(0xFFDFFF80),
+      Color(0xFFD2FF4D),
+      Color(0xFFBFFF00), // pure
+      Color(0xFFA2D900),
+      Color(0xFF7CA600),
+      Color(0xFF567300),
+      Color(0xFF304000),
     ],
   ),
   ColorFamily(
-    name: 'Green',        // CMYK base: 100, 0, 100, 0
+    name: 'Green',
     shades: [
+      Color(0xFFE6FFE6),
       Color(0xFFCCFFCC),
+      Color(0xFFA6FFA6),
       Color(0xFF80FF80),
-      Color(0xFF00FF00),
-      Color(0xFF00B300),
-      Color(0xFF006600),
+      Color(0xFF4DFF4D),
+      Color(0xFF00FF00), // pure
+      Color(0xFF00D900),
+      Color(0xFF00A600),
+      Color(0xFF007300),
+      Color(0xFF004000),
     ],
   ),
   ColorFamily(
-    name: 'Spring Green', // CMYK base: 100, 0, 50, 0
+    name: 'Spring Green',
     shades: [
+      Color(0xFFE6FFF2),
       Color(0xFFCCFFE6),
-      Color(0xFF80FFBF),
-      Color(0xFF00FF80),
-      Color(0xFF00B359),
-      Color(0xFF006633),
+      Color(0xFFA6FFD3),
+      Color(0xFF80FFC0),
+      Color(0xFF4DFFA6),
+      Color(0xFF00FF80), // pure
+      Color(0xFF00D96D),
+      Color(0xFF00A653),
+      Color(0xFF00733A),
+      Color(0xFF004020),
     ],
   ),
 
   // --- Blues / Cyans ---------------------------------------------------------
   ColorFamily(
-    name: 'Cyan',         // CMYK base: 100, 0, 0, 0
+    name: 'Cyan',
     shades: [
+      Color(0xFFE6FFFF),
       Color(0xFFCCFFFF),
+      Color(0xFFA6FFFF),
       Color(0xFF80FFFF),
-      Color(0xFF00FFFF),
-      Color(0xFF00B3B3),
-      Color(0xFF006666),
+      Color(0xFF4DFFFF),
+      Color(0xFF00FFFF), // pure
+      Color(0xFF00D9D9),
+      Color(0xFF00A6A6),
+      Color(0xFF007373),
+      Color(0xFF004040),
     ],
   ),
   ColorFamily(
-    name: 'Sky Blue',     // CMYK base: 100, 40, 0, 0
+    name: 'Sky Blue',
     shades: [
+      Color(0xFFE6F5FF),
       Color(0xFFCCEBFF),
+      Color(0xFFA6DBFF),
       Color(0xFF80CCFF),
-      Color(0xFF0099FF),
-      Color(0xFF006BB3),
-      Color(0xFF003D66),
+      Color(0xFF4DB8FF),
+      Color(0xFF0099FF), // pure
+      Color(0xFF0082D9),
+      Color(0xFF0063A6),
+      Color(0xFF004573),
+      Color(0xFF002640),
     ],
   ),
   ColorFamily(
-    name: 'Blue',         // CMYK base: 100, 60, 0, 0
+    name: 'Blue',
     shades: [
+      Color(0xFFE6F0FF),
       Color(0xFFCCE0FF),
+      Color(0xFFA6C9FF),
       Color(0xFF80B3FF),
-      Color(0xFF0066FF),
-      Color(0xFF0047B3),
-      Color(0xFF002966),
+      Color(0xFF4D94FF),
+      Color(0xFF0066FF), // pure
+      Color(0xFF0057D9),
+      Color(0xFF0042A6),
+      Color(0xFF002E73),
+      Color(0xFF001A40),
     ],
   ),
   ColorFamily(
-    name: 'Indigo',       // CMYK base: 80, 100, 0, 0
+    name: 'Indigo',
     shades: [
+      Color(0xFFEBE6FF),
       Color(0xFFD6CCFF),
+      Color(0xFFB8A6FF),
       Color(0xFF9980FF),
-      Color(0xFF3300FF),
-      Color(0xFF2400B3),
-      Color(0xFF140066),
+      Color(0xFF704DFF),
+      Color(0xFF3300FF), // pure
+      Color(0xFF2B00D9),
+      Color(0xFF2100A6),
+      Color(0xFF170073),
+      Color(0xFF0D0040),
     ],
   ),
 
   // --- Purples / Pinks -------------------------------------------------------
   ColorFamily(
-    name: 'Violet',       // CMYK base: 40, 100, 0, 0
+    name: 'Violet',
     shades: [
+      Color(0xFFF5E6FF),
       Color(0xFFEBCCFF),
+      Color(0xFFDBA6FF),
       Color(0xFFCC80FF),
-      Color(0xFF9900FF),
-      Color(0xFF6B00B3),
-      Color(0xFF3D0066),
+      Color(0xFFB84DFF),
+      Color(0xFF9900FF), // pure
+      Color(0xFF8200D9),
+      Color(0xFF6300A6),
+      Color(0xFF450073),
+      Color(0xFF260040),
     ],
   ),
   ColorFamily(
-    name: 'Magenta',      // CMYK base: 0, 100, 0, 0
+    name: 'Magenta',
     shades: [
+      Color(0xFFFFE6FF),
       Color(0xFFFFCCFF),
+      Color(0xFFFFA6FF),
       Color(0xFFFF80FF),
-      Color(0xFFFF00FF),
-      Color(0xFFB300B3),
-      Color(0xFF660066),
+      Color(0xFFFF4DFF),
+      Color(0xFFFF00FF), // pure
+      Color(0xFFD900D9),
+      Color(0xFFA600A6),
+      Color(0xFF730073),
+      Color(0xFF400040),
     ],
   ),
   ColorFamily(
-    name: 'Pink',         // CMYK base: 0, 100, 20, 0
+    name: 'Pink',
     shades: [
+      Color(0xFFFFE6FA),
       Color(0xFFFFCCF5),
+      Color(0xFFFFA6ED),
       Color(0xFFFF80E6),
-      Color(0xFFFF00CC),
-      Color(0xFFB3008F),
-      Color(0xFF660052),
+      Color(0xFFFF4DDB),
+      Color(0xFFFF00CC), // pure
+      Color(0xFFD900AD),
+      Color(0xFFA60085),
+      Color(0xFF73005C),
+      Color(0xFF400033),
     ],
   ),
 ];
@@ -236,3 +314,22 @@ ColorFamily? colorFamilyByName(String name) {
     return null;
   }
 }
+
+const List<int> health = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
+
+/// Default color palette for quick-pick selectors.
+/// Index 0 is null (no color / transparent); remaining entries are
+/// the pure-hue (index 5) of their respective [ColorFamily].
+const List<Color?> defaultColors = [
+  null,                // 0  none / transparent
+  Color(0xFFFFFFFF),   // 1  white
+  Color(0xFFFFFF00),   // 2  yellow
+  Color(0xFF0066FF),   // 3  blue
+  Color(0xFFFF0000),   // 4  red
+  Color(0xFF00FF00),   // 5  green
+  Color(0xFFFF9900),   // 6  orange
+  Color(0xFF00FFFF),   // 7  cyan
+  Color(0xFFFF00FF),   // 8  magenta
+  Color(0xFF00FF80),   // 9  spring green
+  Color(0xFF000000),   // 10 black
+];
