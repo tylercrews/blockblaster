@@ -114,25 +114,25 @@ class GameBlock extends PositionComponent {
     if (hp <= 0) return Colors.transparent;
 
     final int slot;
-    if (hp >= 129) {
+    if (hp >= 257) { // 512 -- 512 is double impossible, might remove later
       slot = 10;
-    } else if (hp >= 65) {
+    } else if (hp >= 129) { // 256
       slot = 9;
-    } else if (hp >= 33) {
+    } else if (hp >= 65) { // 128
       slot = 8;
-    } else if (hp >= 17) {
+    } else if (hp >= 33) { // 64
       slot = 7;
-    } else if (hp >= 9) {
+    } else if (hp >= 17) { // 32
       slot = 6;
-    } else if (hp >= 5) {
+    } else if (hp >= 9) { // 16
       slot = 5;
-    } else if (hp >= 3) {
+    } else if (hp >= 5) { // 8
       slot = 4;
-    } else if (hp >= 2) {
+    } else if (hp >= 3) { // 4
       slot = 3;
-    } else if (hp >= 1) {
+    } else if (hp >= 2) { // 2
       slot = 2;
-    } else {
+    } else { // should be less than or equal to 1 health left
       slot = 1;
     }
 

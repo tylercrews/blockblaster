@@ -322,14 +322,14 @@ const List<int> health = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
 /// the pure-hue (index 5) of their respective [ColorFamily].
 const List<Color?> defaultColors = [
   null,                // 0  none / transparent
-  Color(0xFFFFFFFF),   // 1  white
-  Color(0xFFFF0000),   // 2  red
-  Color(0xFFFF9900),   // 3  orange
-  Color(0xFFFFFF00),   // 4  yellow
-  Color(0xFF00FF00),   // 5  green
-  Color(0xFF0066FF),   // 6  blue
-  Color(0xFFFF00FF),   // 7  magenta
-  Color(0xFF00FF80),   // 8  spring green
-  Color(0xFF00FFFF),   // 9  cyan
-  Color(0xFF000000),   // 10 black
+  Color(0xFFFF0000),   // 1  red
+  Color(0xFFFF9900),   // 2  orange
+  Color(0xFFFFFF00),   // 3  yellow
+  Color(0xFF00FF00),   // 4  green
+  Color(0xFF0066FF),   // 5  blue
+  Color(0xFFFF00FF),   // 6  magenta
+  Color(0xFF00FF80),   // 7  spring green
+  Color(0xFF00FFFF),   // 8  cyan
+  Color(0xFF000000),   // 9 black
+  Color(0xFFFFFFFF),   // 10  white
 ];
