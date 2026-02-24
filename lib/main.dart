@@ -4,9 +4,12 @@ import 'package:flame/components.dart';
 import 'package:flutter/services.dart';
 import 'package:flame/input.dart';
 import 'dart:math' as math;
+import 'block.dart';
+import 'localstorage_properties.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await LocalStorageProperties.init();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeRight,
     DeviceOrientation.landscapeLeft,
@@ -301,7 +304,7 @@ class BlockBlasterGame extends FlameGame {
   late PlayerShip player;
   
   late List<Shot> shots;
-  late List<Block> blocks;
+  late List<GameBlock> blocks;
   int lives = 5;
   int score = 0;
   double scoreTimer = 0;
@@ -350,7 +353,7 @@ class BlockBlasterGame extends FlameGame {
     player.position = Vector2(20, screenSize.height / 2 - PlayerShip.shipHeight / 2);
     add(player);
     
-    _spawnBlocks();
+    _spawnBlocks([1, 2, 3, 4, 5]);
     
     debugPrint('Player spawned at: ${player.position}');
     debugPrint('BlockBlasterGame loaded!');
@@ -509,33 +512,47 @@ class BlockBlasterGame extends FlameGame {
     add(shot);
   }
 
-  void addBlock(Block block) {
+  void addBlock(GameBlock block) {
     blocks.add(block);
     add(block);
   }
 
-  void _spawnBlocks() {
-    // Spawn 5 blocks spanning the full height of the screen
-    const blockSize = 50.0;
+  /// Spawns blocks into the 5 fixed vertical slots on the right side of the screen.
+  ///
+  /// [levels] must have exactly 5 elements (indices 0–4).
+  /// Index 0 = bottom slot, index 4 = top slot.
+  /// A value of 0 skips that slot; values 1–10 create a [GameBlock] via [BlockFactory].
+  void _spawnBlocks(List<int> levels) {
+    assert(levels.length == 5, '_spawnBlocks requires exactly 5 level values.');
+    const blockSize = GameBlock.blockSize;
     const numBlocks = 5;
-    // Use screenSize for reliable dimensions
     final screenH = screenSize.height;
     final screenW = screenSize.width;
-    final x = screenW - blockSize - 50; // Right side with margin
-    // Calculate gap so blocks span from top to bottom edge
+    final x = screenW - blockSize - 50;
     final totalGap = screenH - (blockSize * numBlocks);
     final blockGap = totalGap / (numBlocks - 1);
-    
+
     debugPrint('Spawning blocks: screenSize=${screenW}x${screenH}, x=$x, blockGap=$blockGap');
-    
+
     for (int i = 0; i < numBlocks; i++) {
-      final block = Block(gameRef: this);
-      final yPos = i * (blockSize + blockGap);
-      block.position = Vector2(x, yPos);
-      debugPrint('Block $i spawned at position: ($x, $yPos)');
-      addBlock(block);
+      final level = levels[i];
+      if (level == 0) {
+        debugPrint('Slot $i skipped (level 0)');
+        continue;
+      }
+      // index 0 = bottom → highest yPos; index 4 = top → yPos 0
+      final slotFromTop = (numBlocks - 1) - i;
+      final yPos = slotFromTop * (blockSize + blockGap);
+      final block = BlockFactory.create(
+        level: level,
+        position: Vector2(x, yPos),
+      );
+      if (block != null) {
+        debugPrint('Slot $i (level $level) spawned at ($x, $yPos)');
+        addBlock(block);
+      }
     }
-    debugPrint('Total blocks in game: ${blocks.length}');
+    debugPrint('Total blocks spawned: ${blocks.length}');
   }
 
 
@@ -652,7 +669,7 @@ class BlockBlasterGame extends FlameGame {
     
     // Check if new position would collide with any blocks
     bool canMove = true;
-    Block? collidingBlock;
+    GameBlock? collidingBlock;
     for (var block in blocks) {
       if (block.isVisible && player.overlapsRectAtPosition(newPosition, block.toRect())) {
         canMove = false;

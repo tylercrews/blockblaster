@@ -66,9 +66,11 @@ abstract class LocalStorageProperties {
   // Color slots 1–10
   // ---------------------------------------------------------------------------
 
-  /// Returns the stored [Color] for the given [slot] (1–10), or null if unset.
+  /// Returns the stored [Color] for the given [slot] (1–10), or null if unset
+  /// or if [init()] has not yet been called.
   static Color? getColor(int slot) {
     assert(slot >= 1 && slot <= 10, 'Color slot must be 1–10.');
+    if (_prefs == null) return null;
     final value = _p.getInt(_colorKeys[slot]);
     return value != null ? Color(value) : null;
   }
