@@ -78,15 +78,15 @@ class GameBlock extends PositionComponent {
     }
   }
 
-  /// Register a hit on this block.  Returns true if the block was destroyed.
-  bool hit() {
-    if (!isVisible) return false;
+  /// Register a hit on this block. Returns maxHealth if destroyed, 0 otherwise.
+  int hit() {
+    if (!isVisible) return 0;
     remainingHealth--;
     if (remainingHealth <= 0) {
       isVisible = false;
-      return true;
+      return maxHealth;
     }
-    return false;
+    return 0;
   }
 
   Rect toRect() =>
@@ -96,42 +96,41 @@ class GameBlock extends PositionComponent {
   // Color logic
   // ---------------------------------------------------------------------------
 
-  /// Maps [hp] to a color slot (1–10), resolving the user's stored color from
+  /// Maps [hp] and [maxHp] to a color slot (1–10), resolving the user's stored color from
   /// localStorage first, falling back to [defaultColors].
   ///
-  /// Thresholds mirror the [health] list:
-  ///   hp >= 512  → slot 10
-  ///   hp >= 256  → slot 9
-  ///   hp >= 128  → slot 8
-  ///   hp >= 64   → slot 7
-  ///   hp >= 32   → slot 6
-  ///   hp >= 16   → slot 5
-  ///   hp >= 8    → slot 4
-  ///   hp >= 4    → slot 3
-  ///   hp >= 2    → slot 2
-  ///   hp >= 1    → slot 1
-  ///   hp <= 0    → transparent
-  static Color colorForHealth(int hp) {
+  /// Color stays at the breakpoint level until health drops below it:
+  ///   maxHp >= 512 (slot 10) stays until hp < 256
+  ///   maxHp >= 256 (slot 9) stays until hp < 128
+  ///   maxHp >= 128 (slot 8) stays until hp < 64
+  ///   maxHp >= 64 (slot 7) stays until hp < 32
+  ///   maxHp >= 32 (slot 6) stays until hp < 16
+  ///   maxHp >= 16 (slot 5) stays until hp < 8
+  ///   maxHp >= 8 (slot 4) stays until hp < 4
+  ///   maxHp >= 4 (slot 3) stays until hp < 2
+  ///   maxHp >= 2 (slot 2) stays until hp < 1
+  ///   hp <= 0 → transparent
+  static Color colorForHealth(int hp, int maxHp) {
     if (hp <= 0) return Colors.transparent;
 
     final int slot;
-    if (hp >= 512) {
+    if (hp >= 129) {
       slot = 10;
-    } else if (hp >= 256) {
+    } else if (hp >= 65) {
       slot = 9;
-    } else if (hp >= 128) {
+    } else if (hp >= 33) {
       slot = 8;
-    } else if (hp >= 64) {
+    } else if (hp >= 17) {
       slot = 7;
-    } else if (hp >= 32) {
+    } else if (hp >= 9) {
       slot = 6;
-    } else if (hp >= 16) {
+    } else if (hp >= 5) {
       slot = 5;
-    } else if (hp >= 8) {
+    } else if (hp >= 3) {
       slot = 4;
-    } else if (hp >= 4) {
-      slot = 3;
     } else if (hp >= 2) {
+      slot = 3;
+    } else if (hp >= 1) {
       slot = 2;
     } else {
       slot = 1;
@@ -143,8 +142,8 @@ class GameBlock extends PositionComponent {
         Colors.grey;
   }
 
-  /// The current display color based on [remainingHealth].
-  Color get currentColor => colorForHealth(remainingHealth);
+  /// The current display color based on [remainingHealth] and [maxHealth].
+  Color get currentColor => colorForHealth(remainingHealth, maxHealth);
 
   // ---------------------------------------------------------------------------
   // Rendering

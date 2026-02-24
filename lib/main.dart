@@ -423,7 +423,11 @@ class BlockBlasterGame extends FlameGame {
           debugPrint('Bullet hit block! Shot: ${shot.toRect()}, Block: ${block.toRect()}');
           remove(shot);
           shots.remove(shot);
-          block.hit();
+          int scoreGain = block.hit();
+          if (scoreGain > 0) {
+            score += scoreGain;
+            debugPrint('Block destroyed! +$scoreGain score');
+          }
           break;
         }
       }
