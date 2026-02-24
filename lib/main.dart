@@ -379,6 +379,16 @@ class BlockBlasterGame extends FlameGame {
       }
       return false;
     });
+
+    // Remove blocks that have moved completely off the left side
+    blocks.removeWhere((block) {
+      if (block.position.x + GameBlock.blockSize < 0) {
+        remove(block);
+        debugPrint('Block despawned (off left edge)');
+        return true;
+      }
+      return false;
+    });
     
     // Increment score once per second while alive
     if (!isGameOver) {
@@ -528,7 +538,8 @@ class BlockBlasterGame extends FlameGame {
     const numBlocks = 5;
     final screenH = screenSize.height;
     final screenW = screenSize.width;
-    final x = screenW - blockSize - 50;
+    // Spawn one blockSize to the right of the screen edge (off-screen)
+    final x = screenW + blockSize;
     final totalGap = screenH - (blockSize * numBlocks);
     final blockGap = totalGap / (numBlocks - 1);
 
@@ -546,6 +557,7 @@ class BlockBlasterGame extends FlameGame {
       final block = BlockFactory.create(
         level: level,
         position: Vector2(x, yPos),
+        screenWidth: screenW,
       );
       if (block != null) {
         debugPrint('Slot $i (level $level) spawned at ($x, $yPos)');

@@ -15,13 +15,19 @@ import 'localstorage_properties.dart';
 /// color slot and falls back to [defaultColors].
 abstract class BlockFactory {
   /// Returns a [GameBlock] for the given [level], or null if [level] is 0.
+  /// [screenWidth] is used to calculate movement speed (60s traverse time).
   static GameBlock? create({
     required int level,
     required Vector2 position,
+    required double screenWidth,
   }) {
     assert(level >= 0 && level <= 10, 'Block level must be 0–10.');
     if (level == 0) return null;
-    return GameBlock(level: level, spawnPosition: position);
+    return GameBlock(
+      level: level,
+      spawnPosition: position,
+      screenWidth: screenWidth,
+    );
   }
 }
 
@@ -30,23 +36,31 @@ abstract class BlockFactory {
 class GameBlock extends PositionComponent {
   static const double blockSize = 50.0;
   static const double respawnTime = 2.0;
+  static const double traverseTime = 60.0; // seconds to cross screen
 
   /// Level this block was created at (1–10).
   final int level;
 
+  /// Movement speed in pixels/second (left, toward player).
+  final double moveSpeed;
+
   /// Maximum health for this block, derived from [health][level].
-  late final int maxHealth;
+  final int maxHealth;
 
   /// Current remaining health.
-  int remainingHealth = 0;
+  int remainingHealth;
 
   bool isVisible = true;
   double respawnTimer = 0;
 
-  GameBlock({required this.level, required Vector2 spawnPosition})
-      : assert(level >= 1 && level <= 10) {
-    maxHealth = health[level];
-    remainingHealth = maxHealth;
+  GameBlock({
+    required this.level,
+    required Vector2 spawnPosition,
+    required double screenWidth,
+  })  : assert(level >= 1 && level <= 10),
+        maxHealth = health[level],
+        moveSpeed = screenWidth / traverseTime,
+        remainingHealth = health[level] {
     position = spawnPosition;
   }
 
@@ -67,6 +81,9 @@ class GameBlock extends PositionComponent {
         isVisible = true;
         respawnTimer = 0;
       }
+    } else {
+      // Move left toward player
+      position.x -= moveSpeed * dt;
     }
   }
 
