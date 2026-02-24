@@ -170,25 +170,25 @@ class GameBlock extends PositionComponent {
         Rect.fromLTWH(5, 5, blockSize - 10, blockSize - 10), innerPaint);
 
     // Health label
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '$remainingHealth',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          shadows: [Shadow(color: Colors.black, blurRadius: 2)],
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      Offset(
-        blockSize / 2 - textPainter.width / 2,
-        blockSize / 2 - textPainter.height / 2,
-      ),
-    );
+    // final textPainter = TextPainter(
+    //   text: TextSpan(
+    //     text: '$remainingHealth',
+    //     style: const TextStyle(
+    //       color: Colors.white,
+    //       fontSize: 14,
+    //       fontWeight: FontWeight.bold,
+    //       shadows: [Shadow(color: Colors.black, blurRadius: 2)],
+    //     ),
+    //   ),
+    //   textDirection: TextDirection.ltr,
+    // );
+    // textPainter.layout();
+    // textPainter.paint(
+    //   canvas,
+    //   Offset(
+    //     blockSize / 2 - textPainter.width / 2,
+    //     blockSize / 2 - textPainter.height / 2,
+    //   ),
+    // );
   }
 }
