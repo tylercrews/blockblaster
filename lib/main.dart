@@ -6,6 +6,7 @@ import 'package:flame/input.dart';
 import 'dart:math' as math;
 import 'block.dart';
 import 'localstorage_properties.dart';
+import 'maps/map1.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -314,6 +315,12 @@ class BlockBlasterGame extends FlameGame {
   
   VoidCallback? onGameOver;
 
+  // Map system
+  final List<List<int>> currentMap = map1;
+  int mapIndex = 0;
+  double mapTimer = 0;
+  static const double mapSpawnInterval = 1.0; // 1 second per map row
+
   // Multi-touch rotation tracking
   final Map<int, Offset> touchPoints = {};
   final Map<int, Offset> previousTouchPoints = {};
@@ -353,10 +360,9 @@ class BlockBlasterGame extends FlameGame {
     player.position = Vector2(20, screenSize.height / 2 - PlayerShip.shipHeight / 2);
     add(player);
     
-    _spawnBlocks([1, 2, 3, 4, 5]);
-    
     debugPrint('Player spawned at: ${player.position}');
     debugPrint('BlockBlasterGame loaded!');
+    debugPrint('Map length: ${currentMap.length} rows');
   }
 
   @override
@@ -396,6 +402,17 @@ class BlockBlasterGame extends FlameGame {
       if (scoreTimer >= 1.0) {
         score += scoreTimer.floor();
         scoreTimer -= scoreTimer.floor();
+      }
+    }
+
+    // Map progression: spawn blocks from map at 1-second intervals
+    if (!isGameOver && mapIndex < currentMap.length) {
+      mapTimer += dt;
+      if (mapTimer >= mapSpawnInterval) {
+        _spawnBlocks(currentMap[mapIndex]);
+        mapIndex++;
+        mapTimer -= mapSpawnInterval;
+        debugPrint('Map index: $mapIndex / ${currentMap.length}');
       }
     }
 
