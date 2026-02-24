@@ -432,6 +432,15 @@ class BlockBlasterGame extends FlameGame {
     // Check block-player collisions
     for (var block in blocks.toList()) {
       if (player.overlapsRect(block.toRect()) && block.isVisible) {
+        // Push player backwards if player is in the way (left of block center)
+        if (player.position.x < block.position.x + GameBlock.blockSize / 2) {
+          player.position.x -= block.moveSpeed * dt;
+          // Clamp player to stay on screen
+          if (player.position.x < 0) {
+            player.position.x = 0;
+          }
+        }
+        
         // Only damage player if invincibility timer is expired
         if (player.canTakeDamage()) {
           lives--;
