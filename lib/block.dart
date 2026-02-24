@@ -35,7 +35,7 @@ abstract class BlockFactory {
 
 class GameBlock extends PositionComponent {
   static const double blockSize = 50.0;
-  static const double traverseTime = 60.0; // seconds to cross screen
+  static const double traverseTime = 30.0; // seconds to cross screen
 
   /// Level this block was created at (1–10).
   final int level;

@@ -319,7 +319,7 @@ class BlockBlasterGame extends FlameGame {
   final List<List<int>> currentMap = map1;
   int mapIndex = 0;
   double mapTimer = 0;
-  static const double mapSpawnInterval = 1.0; // 1 second per map row
+  static const double mapSpawnInterval = 2.0; // 2 seconds per map row
 
   // Multi-touch rotation tracking
   final Map<int, Offset> touchPoints = {};
