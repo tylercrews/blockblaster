@@ -323,13 +323,13 @@ const List<int> health = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
 const List<Color?> defaultColors = [
   null,                // 0  none / transparent
   Color(0xFFFFFFFF),   // 1  white
-  Color(0xFFFFFF00),   // 2  yellow
-  Color(0xFF0066FF),   // 3  blue
-  Color(0xFFFF0000),   // 4  red
+  Color(0xFFFF0000),   // 2  red
+  Color(0xFFFF9900),   // 3  orange
+  Color(0xFFFFFF00),   // 4  yellow
   Color(0xFF00FF00),   // 5  green
-  Color(0xFFFF9900),   // 6  orange
-  Color(0xFF00FFFF),   // 7  cyan
-  Color(0xFFFF00FF),   // 8  magenta
-  Color(0xFF00FF80),   // 9  spring green
+  Color(0xFF0066FF),   // 6  blue
+  Color(0xFFFF00FF),   // 7  magenta
+  Color(0xFF00FF80),   // 8  spring green
+  Color(0xFF00FFFF),   // 9  cyan
   Color(0xFF000000),   // 10 black
 ];

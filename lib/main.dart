@@ -765,7 +765,7 @@ class BlockBlasterGame extends FlameGame {
 class PlayerShip extends PositionComponent {
   final BlockBlasterGame gameRef;
   double shootTimer = 0;
-  final double shootInterval = 1 / 6; // 6 shots per second
+  final double shootInterval = 1 / 8; // 8 shots per second
   static const double shipWidth = 100;  // Width now spans horizontally
   static const double shipHeight = 50;  // Height is vertical depth
   static const double damageInvincibilityTime = 1.0; // 1 second invincibility
@@ -799,7 +799,7 @@ class PlayerShip extends PositionComponent {
     // Update shoot timer
     shootTimer += dt;
     
-    // Shoot at 6 per second
+    // Shoot at 8 per second
     if (shootTimer >= shootInterval) {
       _shoot();
       shootTimer = 0;
