@@ -1,16 +1,23 @@
 # blockblaster
 
-A new Flutter project.
+# to do list
+* tune the first map to make more playable
+* make some maps
+* implement the "emergency self destruct" button
+* exploding animation on death
+* shaking screen when taking damage
+* implement the birds that pop out to give you something more to do when "coasting"
 
-## Getting Started
+* set up high score board, login, payment to register for high score board
+* friends list to compete with only friends instead of the whole world
 
-This project is a starting point for a Flutter application.
+* the settings screen should let you pick a color for each of the 10 blocks
+* reduce to 9 blocks? the 10th is currently redundant 
 
-A few resources to get you started if this is your first Flutter project:
+way later
+* turning animation when rotating (jets on sides)
+* animation shooting down the birds
+* game sounds
+* music
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+* keyboard controls
