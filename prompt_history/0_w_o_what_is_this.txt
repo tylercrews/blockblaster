@@ -1,0 +1,2 @@
+There's no real point in having this folder here. I just want to keep track of some of the more fun or notable LLM prompts to keep track of what is working and what isn't. 
+Just something I want to try to keep track of this time. First try, no style I've thought through yet

@@ -1,0 +1,18 @@
+trying claude opus 4.6, agent mode, 2/24/26
+"3x" fee, started at 9% usage, end at 10%
+
+Time to try something a little complicated - I want you to create a "Self-Destruct Button" in the top left of the screen to the right of the lives count. It should look similar to the picture attached - a yellow and black striped caution square surrounding a large red button with a skull on it, and a glass case covering it.
+
+The glass should be able to swipe up and down to lift and lower it. The glass starts closed, and once you lift the glass up the button is active. When you slide the glass down the button becomes disabled again.
+
+When the button is active and is clicked, it should take away one life from the player, and destroy all the blocks currentlly on screen, starting from the player's location and expanding outward until it reaches each edge of the screen. It should take one second to reach the edge of the screen if you're in the center and two seconds to reach all the way across the screen if the player is on either of the long sides.
+
+Any blocks exploded by the self destruct explosion should not contribute score to the player score.
+
+create any new files to keep the code organized as you would like.
+
+
+~~~~~~~
+
+one thing that I've been frustrated with is that the ai isn't compartmentalizing the code at all, it's making one fucking Enormous main.dart. So want to play with prompting it to do that
+another issue I see a lot when having claude write a lot of code is that there are a lot of yellow warning squiggles it doesn't check for

@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'block.dart';
 import 'localstorage_properties.dart';
 import 'maps/map1.dart';
+import 'self_destruct_button.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -321,6 +322,19 @@ class BlockBlasterGame extends FlameGame {
   double mapTimer = 0;
   static const double mapSpawnInterval = 2.0; // 2 seconds per map row
 
+  // Self-destruct button
+  late SelfDestructButton selfDestructButton;
+  int? _selfDestructPointerId; // tracks which pointer is interacting with button
+
+  // Explosion wave (triggered by self-destruct)
+  bool explosionActive = false;
+  double explosionRadius = 0;
+  double explosionMaxRadius = 0;
+  double explosionSpeed = 0; // pixels per second
+  double explosionCenterX = 0;
+  double explosionCenterY = 0;
+  static const double explosionThickness = 30.0;
+
   // Multi-touch rotation tracking
   final Map<int, Offset> touchPoints = {};
   final Map<int, Offset> previousTouchPoints = {};
@@ -361,6 +375,10 @@ class BlockBlasterGame extends FlameGame {
     add(player);
     
     debugPrint('Player spawned at: ${player.position}');
+    
+    // Self-destruct button positioned to the right of the lives display
+    selfDestructButton = SelfDestructButton(x: 100, y: 3);
+    
     debugPrint('BlockBlasterGame loaded!');
     debugPrint('Map length: ${currentMap.length} rows');
   }
@@ -457,6 +475,38 @@ class BlockBlasterGame extends FlameGame {
         }
       }
     }
+
+    // Update self-destruct button
+    selfDestructButton.update(dt);
+
+    // Update explosion wave
+    if (explosionActive) {
+      explosionRadius += explosionSpeed * dt;
+      
+      // Destroy blocks caught in the explosion ring (no score awarded)
+      for (var block in blocks.toList()) {
+        if (!block.isVisible) continue;
+        final blockCenterX = block.position.x + GameBlock.blockSize / 2;
+        final blockCenterY = block.position.y + GameBlock.blockSize / 2;
+        final dx = blockCenterX - explosionCenterX;
+        final dy = blockCenterY - explosionCenterY;
+        final dist = math.sqrt(dx * dx + dy * dy);
+        // Block is within the explosion wavefront
+        if (dist <= explosionRadius + explosionThickness / 2) {
+          block.isVisible = false;
+          block.remainingHealth = 0;
+          remove(block);
+          blocks.remove(block);
+          debugPrint('Block destroyed by self-destruct!');
+        }
+      }
+      
+      // End explosion when it has passed beyond all screen edges
+      if (explosionRadius - explosionThickness > explosionMaxRadius) {
+        explosionActive = false;
+        debugPrint('Self-destruct explosion complete');
+      }
+    }
   }
 
   @override
@@ -467,8 +517,64 @@ class BlockBlasterGame extends FlameGame {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+    
+    // Render explosion wave
+    if (explosionActive) {
+      _renderExplosion(canvas);
+    }
+    
     _renderLives(canvas);
     _renderScore(canvas);
+    selfDestructButton.render(canvas);
+  }
+
+  void _renderExplosion(Canvas canvas) {
+    // Draw expanding ring of fire/energy
+    final innerRadius = math.max(0.0, explosionRadius - explosionThickness);
+    
+    // Outer glow
+    final glowPaint = Paint()
+      ..color = Colors.orange.withValues(alpha: 0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = explosionThickness * 2;
+    canvas.drawCircle(
+      Offset(explosionCenterX, explosionCenterY),
+      explosionRadius,
+      glowPaint,
+    );
+    
+    // Main ring
+    final ringPaint = Paint()
+      ..color = Colors.redAccent.withValues(alpha: 0.7)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = explosionThickness;
+    canvas.drawCircle(
+      Offset(explosionCenterX, explosionCenterY),
+      explosionRadius,
+      ringPaint,
+    );
+    
+    // Bright inner edge
+    final innerPaint = Paint()
+      ..color = Colors.yellowAccent.withValues(alpha: 0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    canvas.drawCircle(
+      Offset(explosionCenterX, explosionCenterY),
+      innerRadius,
+      innerPaint,
+    );
+    
+    // White-hot core edge
+    final corePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawCircle(
+      Offset(explosionCenterX, explosionCenterY),
+      explosionRadius + explosionThickness / 2,
+      corePaint,
+    );
   }
 
   void _renderScore(Canvas canvas) {
@@ -557,6 +663,48 @@ class BlockBlasterGame extends FlameGame {
     add(block);
   }
 
+  /// Trigger self-destruct: costs 1 life, destroys all on-screen blocks via
+  /// expanding explosion wave. No score is awarded for destroyed blocks.
+  void triggerSelfDestruct() {
+    if (isGameOver) return;
+    if (!selfDestructButton.tryPress()) return;
+    
+    // Cost: 1 life
+    lives--;
+    player.takeDamage(); // grant invincibility frames
+    debugPrint('Self-destruct activated! Lives remaining: $lives');
+    
+    if (lives <= 0) {
+      isGameOver = true;
+      onGameOver?.call();
+      return;
+    }
+    
+    // Start explosion from player center
+    explosionCenterX = player.position.x + PlayerShip.shipWidth / 2;
+    explosionCenterY = player.position.y + PlayerShip.shipHeight / 2;
+    explosionRadius = 0;
+    explosionActive = true;
+    
+    // Calculate max radius = farthest screen corner from player center
+    final dLeft = explosionCenterX;
+    final dRight = screenSize.width - explosionCenterX;
+    final dTop = explosionCenterY;
+    final dBottom = screenSize.height - explosionCenterY;
+    explosionMaxRadius = math.sqrt(
+      math.max(dLeft, dRight) * math.max(dLeft, dRight) +
+      math.max(dTop, dBottom) * math.max(dTop, dBottom),
+    );
+    
+    // Speed: 1 second from center to nearest edge when player is centered,
+    // 2 seconds to cross full screen width from an edge.
+    // Use half screen width per second as the rate.
+    explosionSpeed = screenSize.width / 2;
+    
+    debugPrint('Explosion started at ($explosionCenterX, $explosionCenterY), '
+        'maxRadius=$explosionMaxRadius, speed=$explosionSpeed');
+  }
+
   /// Spawns blocks into the 5 fixed vertical slots on the right side of the screen.
   ///
   /// [levels] must have exactly 5 elements (indices 0–4).
@@ -601,10 +749,27 @@ class BlockBlasterGame extends FlameGame {
   
   void onTouchDown(int pointerId, Vector2 localPosition) {
     debugPrint('Touch down: ID=$pointerId, pos=$localPosition');
+    
+    // Check if touching self-destruct button
+    if (selfDestructButton.handleTouchDown(localPosition.x, localPosition.y)) {
+      _selfDestructPointerId = pointerId;
+      // If glass is open and tapping the button, trigger it
+      if (selfDestructButton.isGlassOpen && !selfDestructButton.isOnCooldown) {
+        triggerSelfDestruct();
+      }
+      return;
+    }
+    
     touchPoints[pointerId] = localPosition.toOffset();
   }
   
   void onTouchUpdate(int pointerId, Vector2 localPosition) {
+    // Forward to self-destruct button if it's the active pointer
+    if (_selfDestructPointerId == pointerId) {
+      selfDestructButton.handleTouchMove(localPosition.x, localPosition.y);
+      return;
+    }
+    
     final previousPosition = previousTouchPoints[pointerId];
     touchPoints[pointerId] = localPosition.toOffset();
     debugPrint('Touch update: ID=$pointerId, current=$localPosition, previous=$previousPosition, touchCount=${touchPoints.length}');
@@ -744,6 +909,12 @@ class BlockBlasterGame extends FlameGame {
   }
   
   void onTouchUp(int pointerId) {
+    if (_selfDestructPointerId == pointerId) {
+      selfDestructButton.handleTouchUp();
+      _selfDestructPointerId = null;
+      return;
+    }
+    
     touchPoints.remove(pointerId);
     previousTouchPoints.remove(pointerId);
     if (touchPoints.isEmpty) {
@@ -753,6 +924,12 @@ class BlockBlasterGame extends FlameGame {
   }
   
   void onTouchCancel(int pointerId) {
+    if (_selfDestructPointerId == pointerId) {
+      selfDestructButton.handleTouchUp();
+      _selfDestructPointerId = null;
+      return;
+    }
+    
     touchPoints.remove(pointerId);
     previousTouchPoints.remove(pointerId);
     if (touchPoints.isEmpty) {
